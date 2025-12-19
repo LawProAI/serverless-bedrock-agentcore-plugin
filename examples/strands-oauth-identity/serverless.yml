@@ -1,0 +1,47 @@
+service: strands-oauth-identity
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+
+plugins:
+  - ../../ # Local plugin reference (use 'serverless-bedrock-agentcore' when installed from npm)
+
+custom:
+  agentCore:
+    defaultTags:
+      Project: ${self:service}
+      Framework: Strands
+      ManagedBy: Serverless
+
+agents:
+  # AgentCore Runtime - Strands agent with OAuth identity
+  oauthAgent:
+    type: runtime
+    description: Strands AI agent with OAuth2 identity for external APIs
+    artifact:
+      docker:
+        path: .
+        file: Dockerfile
+        repository: strands-oauth-identity
+    protocol: HTTP
+    network:
+      networkMode: PUBLIC
+
+  # AgentCore WorkloadIdentity - OAuth2 credential management
+  # This enables secure storage and retrieval of OAuth2 tokens
+  # for external services like OpenAI, GitHub, Salesforce, etc.
+  agentIdentity:
+    type: workloadIdentity
+    oauth2ReturnUrls:
+      - https://example.com/oauth/callback
+      - http://localhost:3000/oauth/callback
+
+  # AgentCore Gateway - For external API tool integration
+  externalApiGateway:
+    type: gateway
+    description: Gateway for external API integrations with OAuth
+    authorizationType: AWS_IAM

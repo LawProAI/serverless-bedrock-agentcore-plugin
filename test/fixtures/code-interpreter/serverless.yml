@@ -1,0 +1,18 @@
+service: test-code-interpreter
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: us-east-1
+  stage: dev
+
+plugins:
+  - ../../../ # Reference to the plugin
+
+agents:
+  pythonExecutor:
+    type: codeInterpreter
+    description: Python code execution sandbox
+    network:
+      networkMode: SANDBOX

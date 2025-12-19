@@ -1,0 +1,25 @@
+service: test-memory
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: us-east-1
+  stage: dev
+
+plugins:
+  - ../../../ # Reference to the plugin
+
+agents:
+  conversationMemory:
+    type: memory
+    description: Conversation memory for agent
+    eventExpiryDuration: 30
+    strategies:
+      # New typed union format - strategies are passed through directly
+      - SemanticMemoryStrategy:
+          Name: ConversationSearch
+          Namespaces:
+            - conversations
+      - SummaryMemoryStrategy:
+          Name: ConversationSummary

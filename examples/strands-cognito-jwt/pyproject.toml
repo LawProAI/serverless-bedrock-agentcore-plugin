@@ -1,0 +1,9 @@
+[project]
+name = "strands-cognito-jwt"
+version = "0.1.0"
+description = "Strands AI agent with Cognito JWT authentication"
+requires-python = ">=3.10"
+dependencies = [
+    "strands-agents>=0.1.0",
+    "bedrock-agentcore>=0.1.7",
+]

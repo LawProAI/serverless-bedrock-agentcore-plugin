@@ -1,0 +1,25 @@
+service: test-browser
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: us-east-1
+  stage: dev
+
+plugins:
+  - ../../../ # Reference to the plugin
+
+agents:
+  webBrowser:
+    type: browser
+    description: Web browser for agent interactions
+    network:
+      networkMode: PUBLIC
+    signing:
+      enabled: true
+    recording:
+      enabled: true
+      s3Location:
+        bucket: my-recordings-bucket
+        prefix: browser-sessions/

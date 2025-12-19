@@ -1,0 +1,9 @@
+[project]
+name = "strands-memory-agent"
+version = "0.1.0"
+description = "Strands AI agent with AgentCore Memory for AWS Bedrock AgentCore"
+requires-python = ">=3.10"
+dependencies = [
+    "strands-agents>=0.1.0",
+    "bedrock-agentcore>=0.1.7",
+]

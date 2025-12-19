@@ -1,0 +1,31 @@
+service: memory-simple-test
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+
+plugins:
+  - ../../
+
+custom:
+  agentCore:
+    defaultTags:
+      Project: MemorySimpleTest
+
+agents:
+  # Simple memory with legacy format
+  testMemory:
+    type: memory
+    description: Simple memory test using legacy format
+    eventExpiryDuration: 30
+    strategies:
+      - type: semantic
+        name: TestSearch
+        namespaces:
+          - /test/{sessionId}
+        configuration:
+          modelId: amazon.titan-embed-text-v2:0
+          similarityThreshold: 0.8

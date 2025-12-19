@@ -1,0 +1,44 @@
+service: test-runtime-full
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: us-west-2
+  stage: prod
+
+plugins:
+  - ../../../ # Reference to the plugin
+
+custom:
+  agentCore:
+    defaultTags:
+      Project: test-project
+      Environment: production
+
+agents:
+  productionAgent:
+    type: runtime
+    description: Production AI agent with full configuration
+    artifact:
+      containerImage: 123456789.dkr.ecr.us-west-2.amazonaws.com/prod-agent:v1.0.0
+    protocol: MCP
+    network:
+      networkMode: VPC
+      vpcConfig:
+        subnetIds:
+          - subnet-12345
+          - subnet-67890
+        securityGroupIds:
+          - sg-abcdef
+    authorizer:
+      customJwtAuthorizer:
+        discoveryUrl: https://auth.example.com/.well-known/openid-configuration
+        allowedAudience:
+          - api://my-api
+    lifecycle:
+      idleTimeout: 600
+      maxConcurrency: 50
+    environment:
+      MODEL_ID: anthropic.claude-sonnet-4-20250514
+      LOG_LEVEL: INFO

@@ -1,0 +1,18 @@
+service: test-workload-identity
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: us-east-1
+  stage: dev
+
+plugins:
+  - ../../../ # Reference to the plugin
+
+agents:
+  agentIdentity:
+    type: workloadIdentity
+    oauth2ReturnUrls:
+      - https://example.com/callback
+      - https://localhost:3000/auth/callback

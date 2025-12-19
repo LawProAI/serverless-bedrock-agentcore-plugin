@@ -1,0 +1,21 @@
+service: test-runtime-basic
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: us-east-1
+  stage: dev
+
+plugins:
+  - ../../../ # Reference to the plugin
+
+agents:
+  myAgent:
+    type: runtime
+    description: Basic test agent
+    artifact:
+      containerImage: 123456789.dkr.ecr.us-east-1.amazonaws.com/my-agent:latest
+    protocol: HTTP
+    network:
+      networkMode: PUBLIC

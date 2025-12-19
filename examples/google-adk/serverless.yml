@@ -1,0 +1,42 @@
+service: my-agent
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+
+plugins:
+  - ../../ # Local plugin reference (use 'serverless-bedrock-agentcore' when installed from npm)
+
+custom:
+  agentCore:
+    defaultTags:
+      Project: ${self:service}
+      ManagedBy: Serverless
+
+agents:
+  # AgentCore Runtime - your agent deployment
+  myAgent:
+    type: runtime
+    description: My AI agent
+    artifact:
+      # Docker build configuration - plugin will build and push automatically
+      docker:
+        path: .
+        file: Dockerfile
+        repository: plugin-test
+        # tag defaults to stage if not specified
+    protocol: HTTP
+    network:
+      networkMode: PUBLIC
+
+  # Optional: AgentCore Memory for conversation persistence
+  # myAgentMemory:
+  #   type: memory
+  #   description: Conversation memory
+  #   eventExpiryDuration: 30
+  #   strategies:
+  #     - type: semantic
+  #       name: ConversationSearch

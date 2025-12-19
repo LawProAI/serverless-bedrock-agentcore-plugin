@@ -1,0 +1,69 @@
+service: browser-code-interpreter
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+
+plugins:
+  - ../../ # Local plugin reference (use 'serverless-bedrock-agentcore' when installed from npm)
+
+custom:
+  agentCore:
+    defaultTags:
+      Project: BrowserCodeInterpreter
+      Environment: ${self:provider.stage}
+
+agents:
+  # Browser with Public Network Access
+  # Use for general web browsing and scraping
+  publicBrowser:
+    type: browser
+    description: Browser with public internet access
+    network:
+      networkMode: PUBLIC
+    signing:
+      enabled: false
+    tags:
+      Purpose: WebScraping
+
+  # Code Interpreter with Sandbox Network
+  # Most secure option - completely isolated execution
+  sandboxCodeInterpreter:
+    type: codeInterpreter
+    description: Sandboxed Python execution environment
+    network:
+      networkMode: SANDBOX
+    tags:
+      SecurityLevel: Maximum
+
+  # Code Interpreter with Public Network
+  # Use when code needs to access external APIs
+  publicCodeInterpreter:
+    type: codeInterpreter
+    description: Python execution with internet access
+    network:
+      networkMode: PUBLIC
+    tags:
+      SecurityLevel: Standard
+
+  # Combined: Runtime that uses Browser and Code Interpreter
+  researchAgent:
+    type: runtime
+    description: Agent that combines browser and code execution
+    artifact:
+      docker:
+        path: .
+        file: Dockerfile
+        repository: browser-code-interpreter
+    protocol: HTTP
+    network:
+      networkMode: PUBLIC
+    authorizationConfig:
+      authorizationType: NONE
+    requestHeaders:
+      allowlist:
+        - X-Amzn-Bedrock-AgentCore-Runtime-Custom-Research-Id
+        - X-Amzn-Bedrock-AgentCore-Runtime-Custom-User-Id

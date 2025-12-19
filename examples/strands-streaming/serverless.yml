@@ -1,0 +1,32 @@
+service: strands-streaming-agent
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+
+plugins:
+  - ../../ # Local plugin reference (use 'serverless-bedrock-agentcore' when installed from npm)
+
+custom:
+  agentCore:
+    defaultTags:
+      Project: ${self:service}
+      Framework: Strands
+      ManagedBy: Serverless
+
+agents:
+  # AgentCore Runtime - Strands streaming agent
+  streamingAgent:
+    type: runtime
+    description: Strands AI agent with async streaming responses
+    artifact:
+      docker:
+        path: .
+        file: Dockerfile
+        repository: strands-streaming-agent
+    protocol: HTTP
+    network:
+      networkMode: PUBLIC

@@ -1,0 +1,140 @@
+service: memory-strategies-example
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+
+plugins:
+  - ../../ # Local plugin reference (use 'serverless-bedrock-agentcore' when installed from npm)
+
+custom:
+  agentCore:
+    defaultTags:
+      Project: MemoryStrategiesExample
+
+agents:
+  # Example 1: Semantic Memory Strategy
+  # Use for similarity-based search across conversations
+  semanticMemory:
+    type: memory
+    description: Memory with semantic search capabilities
+    eventExpiryDuration: 60
+    strategies:
+      - SemanticMemoryStrategy:
+          Name: ConversationSearch
+          Type: SEMANTIC
+          Description: Enables semantic search over conversation history
+          Namespaces:
+            - /conversations/{sessionId}
+            - /users/{userId}/chats
+          SemanticMemoryConfiguration:
+            # Embedding model for semantic search
+            ModelId: amazon.titan-embed-text-v2:0
+            # Minimum similarity score (0.0 to 1.0)
+            SimilarityThreshold: 0.75
+
+  # Example 2: Summary Memory Strategy
+  # Use for maintaining condensed conversation context
+  summaryMemory:
+    type: memory
+    description: Memory with summarization for context management
+    eventExpiryDuration: 90
+    strategies:
+      - SummaryMemoryStrategy:
+          Name: ConversationSummary
+          Type: SUMMARIZATION
+          Description: Summarizes long conversations to maintain context
+          SummaryConfiguration:
+            # Model used for generating summaries
+            SummaryModelId: anthropic.claude-3-haiku-20240307-v1:0
+            # Maximum messages before triggering summary
+            MaxMessages: 50
+
+  # Example 3: User Preference Memory Strategy
+  # Use for tracking user preferences across sessions
+  userPreferenceMemory:
+    type: memory
+    description: Memory for tracking user preferences
+    eventExpiryDuration: 365
+    strategies:
+      - UserPreferenceMemoryStrategy:
+          Name: UserSettings
+          Type: USER_PREFERENCE
+          Description: Tracks user preferences and settings
+          Namespaces:
+            - /users/{userId}/preferences
+            - /users/{userId}/settings
+          UserPreferenceConfiguration:
+            # Model for extracting preferences from conversations
+            ExtractionModelId: anthropic.claude-3-haiku-20240307-v1:0
+
+  # Example 4: Custom Memory Strategy
+  # Use for application-specific memory handling
+  customMemory:
+    type: memory
+    description: Memory with custom strategy configuration
+    eventExpiryDuration: 30
+    strategies:
+      - CustomMemoryStrategy:
+          Name: ApplicationSpecific
+          Type: CUSTOM
+          Description: Custom memory handling for specific use cases
+          CustomConfiguration:
+            customField: customValue
+            processingMode: batch
+            retentionPolicy: archive
+
+  # Example 5: Multi-Strategy Memory
+  # Combine multiple strategies for comprehensive memory management
+  multiStrategyMemory:
+    type: memory
+    description: Memory combining multiple strategies
+    eventExpiryDuration: 90
+    strategies:
+      # Semantic search for finding relevant past conversations
+      - SemanticMemoryStrategy:
+          Name: SemanticSearch
+          Type: SEMANTIC
+          Namespaces:
+            - /conversations/{sessionId}
+          SemanticMemoryConfiguration:
+            ModelId: amazon.titan-embed-text-v2:0
+            SimilarityThreshold: 0.7
+
+      # Summarization for context management
+      - SummaryMemoryStrategy:
+          Name: ContextSummary
+          Type: SUMMARIZATION
+          SummaryConfiguration:
+            SummaryModelId: anthropic.claude-3-haiku-20240307-v1:0
+            MaxMessages: 100
+
+      # User preferences for personalization
+      - UserPreferenceMemoryStrategy:
+          Name: Preferences
+          Type: USER_PREFERENCE
+          Namespaces:
+            - /users/{userId}
+
+  # Example 6: Legacy Format (Deprecated - for backward compatibility)
+  # This format still works but shows deprecation warning
+  legacyMemory:
+    type: memory
+    description: Using legacy format (deprecated)
+    eventExpiryDuration: 30
+    strategies:
+      - type: semantic
+        name: LegacySearch
+        namespaces:
+          - /legacy/{sessionId}
+        configuration:
+          modelId: amazon.titan-embed-text-v2:0
+          similarityThreshold: 0.8
+      - type: summary
+        name: LegacySummary
+        configuration:
+          summaryModelId: anthropic.claude-3-haiku-20240307-v1:0
+          maxMessages: 50

@@ -1,0 +1,78 @@
+service: full-stack-agent
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+
+plugins:
+  - ../../ # Local plugin reference (use 'serverless-bedrock-agentcore' when installed from npm)
+
+custom:
+  agentCore:
+    # Default tags applied to all resources
+    defaultTags:
+      Project: FullStackAgent
+      Environment: ${self:provider.stage}
+
+agents:
+  # Runtime - The main agent runtime
+  mainAgent:
+    type: runtime
+    description: Full-stack AI agent with browser and code execution capabilities
+    artifact:
+      docker:
+        path: .
+        file: Dockerfile
+        repository: full-stack-agent
+    protocol: HTTP
+    network:
+      networkMode: PUBLIC
+    authorizationConfig:
+      authorizationType: NONE
+    # Pass allowed headers to the runtime
+    requestHeaders:
+      allowlist:
+        - X-Amzn-Bedrock-AgentCore-Runtime-Custom-User-Id
+        - X-Amzn-Bedrock-AgentCore-Runtime-Custom-Session-Id
+        - X-Amzn-Bedrock-AgentCore-Runtime-Custom-Correlation-Id
+
+  # Memory - Conversation history and semantic search
+  agentMemory:
+    type: memory
+    description: Stores conversation history and enables semantic search
+    eventExpiryDuration: 90
+    strategies:
+      # Using legacy format for compatibility
+      - type: semantic
+        name: ConversationSearch
+        namespaces:
+          - /conversations/{sessionId}
+        configuration:
+          modelId: amazon.titan-embed-text-v2:0
+          similarityThreshold: 0.75
+
+  # Browser - For web scraping and browsing
+  webBrowser:
+    type: browser
+    description: Enables web browsing capabilities for the agent
+    network:
+      networkMode: PUBLIC
+    signing:
+      enabled: false
+
+  # Code Interpreter - For code execution
+  codeExecutor:
+    type: codeInterpreter
+    description: Sandboxed Python code execution environment
+    network:
+      networkMode: SANDBOX
+
+  # Workload Identity - For OAuth2 authentication
+  agentIdentity:
+    type: workloadIdentity
+    oauth2ReturnUrls:
+      - https://${self:service}.example.com/auth/callback
+      - http://localhost:3000/auth/callback

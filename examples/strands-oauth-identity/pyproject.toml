@@ -1,0 +1,10 @@
+[project]
+name = "strands-oauth-identity"
+version = "0.1.0"
+description = "Strands AI agent with OAuth2 identity for external APIs"
+requires-python = ">=3.10"
+dependencies = [
+    "strands-agents>=0.1.0",
+    "bedrock-agentcore>=0.1.7",
+    "openai>=1.0.0",  # Optional: for OpenAI API calls
+]

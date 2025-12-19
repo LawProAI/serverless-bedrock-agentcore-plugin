@@ -1,0 +1,144 @@
+service: strands-cognito-jwt
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+
+plugins:
+  - ../../ # Local plugin reference (use 'serverless-bedrock-agentcore' when installed from npm)
+
+custom:
+  agentCore:
+    defaultTags:
+      Project: ${self:service}
+      Framework: Strands
+      ManagedBy: Serverless
+
+agents:
+  # AgentCore Runtime - Protected with Cognito JWT authentication
+  secureAgent:
+    type: runtime
+    description: Strands AI agent with Cognito JWT authentication
+    artifact:
+      docker:
+        path: .
+        file: Dockerfile
+        repository: strands-cognito-jwt
+    protocol: HTTP
+    network:
+      networkMode: PUBLIC
+    # CustomJWTAuthorizer using Cognito as the identity provider
+    authorizer:
+      customJwtAuthorizer:
+        # OIDC discovery URL for Cognito User Pool
+        # Format: https://cognito-idp.{region}.amazonaws.com/{userPoolId}/.well-known/openid-configuration
+        discoveryUrl:
+          Fn::Sub:
+            - https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}/.well-known/openid-configuration
+            - UserPoolId:
+                Ref: AgentUserPool
+        # Restrict to specific app client(s)
+        allowedClients:
+          - Ref: AgentUserPoolClient
+        # Optional: Restrict to specific audience
+        allowedAudience:
+          - Ref: AgentUserPoolClient
+
+# Cognito resources for authentication
+resources:
+  Resources:
+    # Cognito User Pool - Stores user identities
+    AgentUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:service}-${self:provider.stage}-users
+        AutoVerifiedAttributes:
+          - email
+        UsernameAttributes:
+          - email
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: false
+            RequireUppercase: true
+        Schema:
+          - Name: email
+            AttributeDataType: String
+            Mutable: true
+            Required: true
+          - Name: name
+            AttributeDataType: String
+            Mutable: true
+            Required: false
+
+    # Cognito User Pool Client - Application that can authenticate
+    AgentUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: ${self:service}-${self:provider.stage}-client
+        UserPoolId:
+          Ref: AgentUserPool
+        GenerateSecret: false
+        ExplicitAuthFlows:
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+          - ALLOW_USER_SRP_AUTH
+        SupportedIdentityProviders:
+          - COGNITO
+        CallbackURLs:
+          - http://localhost:3000/callback
+          - https://example.com/callback
+        LogoutURLs:
+          - http://localhost:3000/logout
+          - https://example.com/logout
+        AllowedOAuthFlows:
+          - code
+          - implicit
+        AllowedOAuthScopes:
+          - email
+          - openid
+          - profile
+        AllowedOAuthFlowsUserPoolClient: true
+
+    # Cognito User Pool Domain - Hosted UI endpoint
+    # Note: Domain must be globally unique across all AWS accounts
+    AgentUserPoolDomain:
+      Type: AWS::Cognito::UserPoolDomain
+      Properties:
+        Domain: scjwt-dev-demo-20251209
+        UserPoolId:
+          Ref: AgentUserPool
+
+  Outputs:
+    UserPoolId:
+      Description: Cognito User Pool ID
+      Value:
+        Ref: AgentUserPool
+      Export:
+        Name: ${self:service}-${self:provider.stage}-UserPoolId
+
+    UserPoolClientId:
+      Description: Cognito User Pool Client ID
+      Value:
+        Ref: AgentUserPoolClient
+      Export:
+        Name: ${self:service}-${self:provider.stage}-UserPoolClientId
+
+    CognitoDomain:
+      Description: Cognito Hosted UI Domain
+      Value:
+        Fn::Sub: https://${AgentUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com
+      Export:
+        Name: ${self:service}-${self:provider.stage}-CognitoDomain
+
+    OIDCDiscoveryUrl:
+      Description: OIDC Discovery URL for JWT validation
+      Value:
+        Fn::Sub: https://cognito-idp.${AWS::Region}.amazonaws.com/${AgentUserPool}/.well-known/openid-configuration
+      Export:
+        Name: ${self:service}-${self:provider.stage}-OIDCDiscoveryUrl

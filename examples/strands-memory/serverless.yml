@@ -1,0 +1,56 @@
+service: strands-memory-agent
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+
+plugins:
+  - ../../ # Local plugin reference (use 'serverless-bedrock-agentcore' when installed from npm)
+
+custom:
+  agentCore:
+    defaultTags:
+      Project: ${self:service}
+      Framework: Strands
+      ManagedBy: Serverless
+
+agents:
+  # AgentCore Runtime - Strands agent with memory
+  memoryAgent:
+    type: runtime
+    description: Strands AI agent with AgentCore Memory integration
+    artifact:
+      docker:
+        path: .
+        file: Dockerfile
+        repository: strands-memory-agent
+    protocol: HTTP
+    network:
+      networkMode: PUBLIC
+
+  # AgentCore Memory - Short-term conversation memory
+  shortTermMemory:
+    type: memory
+    description: Short-term conversation memory (within session)
+    eventExpiryDuration: 7
+
+  # AgentCore Memory - Long-term memory with semantic search
+  longTermMemory:
+    type: memory
+    description: Long-term memory with semantic search and user preferences
+    eventExpiryDuration: 90
+    strategies:
+      # Semantic search for finding relevant past conversations
+      - SemanticMemoryStrategy:
+          Name: ConversationSearch
+          Namespaces:
+            - /conversations/{sessionId}
+
+      # Extract and store user preferences
+      - UserPreferenceMemoryStrategy:
+          Name: UserPreferences
+          Namespaces:
+            - /users/{actorId}/preferences
