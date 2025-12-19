@@ -1,6 +1,6 @@
 {
   "name": "serverless-bedrock-agentcore-plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Serverless Framework plugin for AWS Bedrock AgentCore - deploy Runtime, Memory, and Gateway resources",
   "main": "src/index.js",
   "engines": {
