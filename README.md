@@ -1,4 +1,4 @@
-# serverless-bedrock-agentcore
+# serverless-bedrock-agentcore-plugin
 
 Deploy AWS Bedrock AgentCore resources with Serverless Framework.
 
@@ -19,14 +19,14 @@ Deploy AWS Bedrock AgentCore resources with Serverless Framework.
 ## Installation
 
 ```bash
-npm install serverless-bedrock-agentcore --save-dev
+npm install serverless-bedrock-agentcore-plugin --save-dev
 ```
 
 Add to `serverless.yml`:
 
 ```yaml
 plugins:
-  - serverless-bedrock-agentcore
+  - serverless-bedrock-agentcore-plugin
 ```
 
 ## Quick Start
@@ -39,7 +39,7 @@ provider:
   region: us-east-1
 
 plugins:
-  - serverless-bedrock-agentcore
+  - serverless-bedrock-agentcore-plugin
 
 agents:
   myAgent:
