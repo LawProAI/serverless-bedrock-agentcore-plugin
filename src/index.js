@@ -309,7 +309,7 @@ class ServerlessBedrockAgentCore {
    * Validate gateway configuration
    */
   validateGateway(name, config) {
-    const validAuthTypes = ['AWS_IAM', 'CUSTOM_JWT'];
+    const validAuthTypes = ['NONE', 'AWS_IAM', 'CUSTOM_JWT'];
     if (config.authorizerType && !validAuthTypes.includes(config.authorizerType)) {
       throw new this.serverless.classes.Error(
         `Gateway '${name}' has invalid authorizerType '${config.authorizerType}'. Valid types: ${validAuthTypes.join(', ')}`

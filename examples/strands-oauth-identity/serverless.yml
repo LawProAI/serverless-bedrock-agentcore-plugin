@@ -44,4 +44,4 @@ agents:
   externalApiGateway:
     type: gateway
     description: Gateway for external API integrations with OAuth
-    authorizationType: AWS_IAM
+    authorizerType: AWS_IAM

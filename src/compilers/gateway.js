@@ -4,19 +4,28 @@ const { getLogicalId } = require('../utils/naming');
 
 /**
  * Build authorizer configuration for the gateway
+ * Only used when authorizerType is CUSTOM_JWT
  *
  * @param {Object} authConfig - The authorizer configuration from serverless.yml
  * @returns {Object|null} CloudFormation authorizer configuration or null
  */
 function buildGatewayAuthorizerConfiguration(authConfig) {
-  if (!authConfig) {
+  if (!authConfig || !authConfig.customJwtAuthorizer) {
     return null;
   }
 
+  const jwtConfig = authConfig.customJwtAuthorizer;
+
+  if (!jwtConfig.discoveryUrl) {
+    throw new Error('Gateway CustomJWTAuthorizer requires discoveryUrl');
+  }
+
   return {
-    ...(authConfig.allowedAudiences && { AllowedAudiences: authConfig.allowedAudiences }),
-    ...(authConfig.allowedClients && { AllowedClients: authConfig.allowedClients }),
-    ...(authConfig.allowedIssuers && { AllowedIssuers: authConfig.allowedIssuers }),
+    CustomJWTAuthorizer: {
+      DiscoveryUrl: jwtConfig.discoveryUrl,
+      ...(jwtConfig.allowedAudience && { AllowedAudience: jwtConfig.allowedAudience }),
+      ...(jwtConfig.allowedClients && { AllowedClients: jwtConfig.allowedClients }),
+    },
   };
 }
 

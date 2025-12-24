@@ -61,8 +61,7 @@ agents:
     protocol: HTTP
     network:
       networkMode: PUBLIC
-    authorizationConfig:
-      authorizationType: NONE
+    # No authorizer = no authentication required
     requestHeaders:
       allowlist:
         - X-Amzn-Bedrock-AgentCore-Runtime-Custom-Research-Id
