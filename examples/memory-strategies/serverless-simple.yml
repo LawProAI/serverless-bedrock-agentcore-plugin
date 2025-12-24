@@ -16,16 +16,13 @@ custom:
       Project: MemorySimpleTest
 
 agents:
-  # Simple memory with legacy format
+  # Simple memory with new format
   testMemory:
     type: memory
-    description: Simple memory test using legacy format
+    description: Simple memory test
     eventExpiryDuration: 30
     strategies:
-      - type: semantic
-        name: TestSearch
-        namespaces:
-          - /test/{sessionId}
-        configuration:
-          modelId: amazon.titan-embed-text-v2:0
-          similarityThreshold: 0.8
+      - SemanticMemoryStrategy:
+          Name: TestSearch
+          Namespaces:
+            - /test/{sessionId}
