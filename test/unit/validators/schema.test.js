@@ -167,10 +167,9 @@ describe('Schema Validator', () => {
 
       const strategiesSchema = capturedAgentsSchema.additionalProperties.properties.strategies;
       expect(strategiesSchema.type).toBe('array');
-      expect(strategiesSchema.items.properties.type.enum).toContain('semantic');
-      expect(strategiesSchema.items.properties.type.enum).toContain('userPreference');
-      expect(strategiesSchema.items.properties.type.enum).toContain('summary');
-      expect(strategiesSchema.items.properties.type.enum).toContain('custom');
+      // Strategies use additionalProperties to support both legacy and new format
+      expect(strategiesSchema.items.type).toBe('object');
+      expect(strategiesSchema.items.additionalProperties).toBe(true);
     });
 
     test('gateway schema includes authorizerType', () => {
@@ -178,6 +177,7 @@ describe('Schema Validator', () => {
 
       const authTypeSchema = capturedAgentsSchema.additionalProperties.properties.authorizerType;
       expect(authTypeSchema.type).toBe('string');
+      expect(authTypeSchema.enum).toContain('NONE');
       expect(authTypeSchema.enum).toContain('AWS_IAM');
       expect(authTypeSchema.enum).toContain('CUSTOM_JWT');
     });

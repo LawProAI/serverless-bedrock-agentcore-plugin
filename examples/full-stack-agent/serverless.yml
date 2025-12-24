@@ -30,8 +30,7 @@ agents:
     protocol: HTTP
     network:
       networkMode: PUBLIC
-    authorizationConfig:
-      authorizationType: NONE
+    # No authorizer = no authentication required
     # Pass allowed headers to the runtime
     requestHeaders:
       allowlist:
@@ -45,14 +44,10 @@ agents:
     description: Stores conversation history and enables semantic search
     eventExpiryDuration: 90
     strategies:
-      # Using legacy format for compatibility
-      - type: semantic
-        name: ConversationSearch
-        namespaces:
-          - /conversations/{sessionId}
-        configuration:
-          modelId: amazon.titan-embed-text-v2:0
-          similarityThreshold: 0.75
+      - SemanticMemoryStrategy:
+          Name: ConversationSearch
+          Namespaces:
+            - /conversations/{sessionId}
 
   # Browser - For web scraping and browsing
   webBrowser:

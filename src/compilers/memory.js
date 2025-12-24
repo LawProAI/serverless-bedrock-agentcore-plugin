@@ -109,6 +109,7 @@ function buildMemoryStrategies(strategies) {
     if (isLegacyFormat(strategy)) {
       // Emit deprecation warning once per deployment
       if (!deprecationWarningShown) {
+        // eslint-disable-next-line no-console -- Intentional user-facing deprecation warning
         console.warn(
           '\x1b[33m%s\x1b[0m', // Yellow color
           'DEPRECATION WARNING: Memory strategy format has changed to typed union structure. ' +

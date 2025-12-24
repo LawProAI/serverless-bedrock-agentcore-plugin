@@ -45,15 +45,15 @@ agents:
   myAgent:
     type: runtime
     description: My AI agent
-    handler:
-      type: docker
-      image:
-        dockerfile: ./Dockerfile
-        context: .
-    protocol: AWS_MCP
-    networkMode: PUBLIC
-    authorizationConfig:
-      authorizationType: NONE
+    artifact:
+      docker:
+        path: .
+        file: Dockerfile
+        repository: my-agent
+    protocol: HTTP
+    network:
+      networkMode: PUBLIC
+    # Omit 'authorizer' for no authentication
 ```
 
 ## Resource Types
@@ -67,15 +67,20 @@ agents:
   myAgent:
     type: runtime
     description: My AI agent
-    handler:
-      type: docker
-      image:
-        dockerfile: ./Dockerfile
-        context: .
-    protocol: AWS_MCP # AWS_MCP, HTTP, or A2A
-    networkMode: PUBLIC # PUBLIC or VPC
-    authorizationConfig:
-      authorizationType: NONE # NONE or AWS_IAM
+    artifact:
+      docker:
+        path: .
+        file: Dockerfile
+        repository: my-agent
+    protocol: HTTP # HTTP, MCP, or A2A
+    network:
+      networkMode: PUBLIC # PUBLIC or VPC
+    # Optional: JWT authorization (omit for no auth)
+    authorizer:
+      customJwtAuthorizer:
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xxx/.well-known/openid-configuration
+        allowedAudience:
+          - my-client-id
     # Optional: Pass specific headers to the runtime
     requestHeaders:
       allowlist:
@@ -84,18 +89,26 @@ agents:
         - Authorization
 ```
 
-| Property                                | Required | Description                         |
-| --------------------------------------- | -------- | ----------------------------------- |
-| `type`                                  | Yes      | `runtime`                           |
-| `handler.type`                          | Yes      | `docker`                            |
-| `handler.image.dockerfile`              | Yes      | Path to Dockerfile                  |
-| `handler.image.context`                 | Yes      | Docker build context                |
-| `protocol`                              | No       | `AWS_MCP`, `HTTP`, or `A2A`         |
-| `networkMode`                           | No       | `PUBLIC` or `VPC`                   |
-| `authorizationConfig.authorizationType` | No       | `NONE` or `AWS_IAM`                 |
-| `requestHeaders.allowlist`              | No       | Headers to pass to runtime (max 20) |
-| `description`                           | No       | Runtime description                 |
-| `roleArn`                               | No       | Custom IAM role ARN                 |
+| Property                                         | Required | Description                              |
+| ------------------------------------------------ | -------- | ---------------------------------------- |
+| `type`                                           | Yes      | `runtime`                                |
+| `artifact.docker.path`                           | Yes\*    | Docker build context path                |
+| `artifact.docker.file`                           | No       | Dockerfile name (default: Dockerfile)    |
+| `artifact.docker.repository`                     | No       | ECR repository name                      |
+| `artifact.containerImage`                        | Yes\*    | Pre-built container image URI            |
+| `protocol`                                       | No       | `HTTP`, `MCP`, or `A2A`                  |
+| `network.networkMode`                            | No       | `PUBLIC` or `VPC`                        |
+| `authorizer.customJwtAuthorizer`                 | No       | JWT authorizer config (omit for no auth) |
+| `authorizer.customJwtAuthorizer.discoveryUrl`    | Yes\*\*  | OIDC discovery URL                       |
+| `authorizer.customJwtAuthorizer.allowedAudience` | No       | Array of allowed audience values         |
+| `authorizer.customJwtAuthorizer.allowedClients`  | No       | Array of allowed client IDs              |
+| `requestHeaders.allowlist`                       | No       | Headers to pass to runtime (max 20)      |
+| `description`                                    | No       | Runtime description                      |
+| `roleArn`                                        | No       | Custom IAM role ARN                      |
+
+\*Either `artifact.docker` or `artifact.containerImage` is required
+
+\*\*Required when using `customJwtAuthorizer`
 
 ### Memory
 
@@ -111,25 +124,18 @@ agents:
       # Semantic search strategy
       - SemanticMemoryStrategy:
           Name: ConversationSearch
-          Type: SEMANTIC
           Namespaces:
             - /conversations/{sessionId}
-          SemanticMemoryConfiguration:
-            ModelId: amazon.titan-embed-text-v2:0
-            SimilarityThreshold: 0.75
 
       # Summarization strategy
       - SummaryMemoryStrategy:
           Name: SessionSummary
-          Type: SUMMARIZATION
-          SummaryConfiguration:
-            SummaryModelId: anthropic.claude-3-haiku-20240307-v1:0
-            MaxMessages: 100
+          Namespaces:
+            - /sessions/{sessionId}
 
       # User preference strategy
       - UserPreferenceMemoryStrategy:
           Name: UserPrefs
-          Type: USER_PREFERENCE
           Namespaces:
             - /users/{userId}/preferences
 ```
@@ -150,12 +156,8 @@ agents:
 ```yaml
 - SemanticMemoryStrategy:
     Name: Search
-    Type: SEMANTIC
     Namespaces:
       - /sessions/{sessionId}
-    SemanticMemoryConfiguration:
-      ModelId: amazon.titan-embed-text-v2:0
-      SimilarityThreshold: 0.75
 ```
 
 **SummaryMemoryStrategy** - Summarize long conversations:
@@ -163,10 +165,8 @@ agents:
 ```yaml
 - SummaryMemoryStrategy:
     Name: Summary
-    Type: SUMMARIZATION
-    SummaryConfiguration:
-      SummaryModelId: anthropic.claude-3-haiku-20240307-v1:0
-      MaxMessages: 100
+    Namespaces:
+      - /sessions/{sessionId}
 ```
 
 **UserPreferenceMemoryStrategy** - Track user preferences:
@@ -174,7 +174,6 @@ agents:
 ```yaml
 - UserPreferenceMemoryStrategy:
     Name: Preferences
-    Type: USER_PREFERENCE
     Namespaces:
       - /users/{userId}
 ```
@@ -184,8 +183,7 @@ agents:
 ```yaml
 - CustomMemoryStrategy:
     Name: Custom
-    Type: CUSTOM
-    CustomConfiguration:
+    Configuration:
       key: value
 ```
 
@@ -265,33 +263,65 @@ Integrate external APIs as agent tools.
 
 ```yaml
 agents:
-  apiGateway:
+  # Gateway without authentication
+  publicGateway:
     type: gateway
-    description: External API gateway
-    authorizationType: NONE
+    description: Public API gateway
+    authorizerType: NONE
     targets:
-      weatherApi:
-        type: lambdaArn
-        lambdaArn:
+      - name: WeatherAPI
+        type: lambda
+        description: Get weather data
+        functionArn:
           Fn::GetAtt:
             - WeatherFunction
             - Arn
-        name: WeatherAPI
-        description: Get weather data
+
+  # Gateway with JWT authentication
+  secureGateway:
+    type: gateway
+    description: Secure API gateway with JWT auth
+    authorizerType: CUSTOM_JWT
+    authorizerConfiguration:
+      customJwtAuthorizer:
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xxx/.well-known/openid-configuration
+        allowedAudience:
+          - my-client-id
+        allowedClients:
+          - my-app-client
+    targets:
+      - name: SecureAPI
+        type: lambda
+        functionArn:
+          Fn::GetAtt:
+            - SecureFunction
+            - Arn
 ```
 
-| Property            | Required | Description                        |
-| ------------------- | -------- | ---------------------------------- |
-| `type`              | Yes      | `gateway`                          |
-| `authorizationType` | No       | `NONE` or `AWS_IAM`                |
-| `targets`           | No       | Gateway targets (Lambda functions) |
-| `description`       | No       | Gateway description                |
-| `roleArn`           | No       | Custom IAM role ARN                |
+| Property                                                      | Required | Description                                                        |
+| ------------------------------------------------------------- | -------- | ------------------------------------------------------------------ |
+| `type`                                                        | Yes      | `gateway`                                                          |
+| `authorizerType`                                              | No       | `NONE`, `AWS_IAM`, or `CUSTOM_JWT` (default: `AWS_IAM`)            |
+| `authorizerConfiguration.customJwtAuthorizer`                 | No\*     | JWT authorizer config (required when `authorizerType: CUSTOM_JWT`) |
+| `authorizerConfiguration.customJwtAuthorizer.discoveryUrl`    | Yes\*\*  | OIDC discovery URL                                                 |
+| `authorizerConfiguration.customJwtAuthorizer.allowedAudience` | No       | Array of allowed audience values                                   |
+| `authorizerConfiguration.customJwtAuthorizer.allowedClients`  | No       | Array of allowed client IDs                                        |
+| `protocolType`                                                | No       | `MCP` (default: `MCP`)                                             |
+| `targets`                                                     | No       | Gateway targets (Lambda functions)                                 |
+| `description`                                                 | No       | Gateway description                                                |
+| `roleArn`                                                     | No       | Custom IAM role ARN                                                |
+
+\*Required when `authorizerType` is `CUSTOM_JWT`
+
+\*\*Required when using `customJwtAuthorizer`
 
 ## Commands
 
 ```bash
 sls agentcore info        # Show defined resources
+sls agentcore build       # Build Docker images
+sls agentcore invoke      # Invoke a deployed agent
+sls agentcore logs        # Fetch logs for a runtime
 sls package               # Generate CloudFormation
 sls deploy                # Deploy to AWS
 sls remove                # Remove deployed resources
@@ -305,7 +335,7 @@ The `examples/` directory contains complete working examples:
 
 A comprehensive example showing all resource types working together:
 
-- Runtime with Docker handler
+- Runtime with Docker artifact
 - Memory with multiple strategies
 - Browser for web interactions
 - CodeInterpreter for code execution
@@ -456,8 +486,8 @@ The memory strategy format has changed to a typed union structure. The legacy fo
 strategies:
   - type: semantic
     name: Search
-    configuration:
-      modelId: amazon.titan-embed-text-v2:0
+    namespaces:
+      - /sessions/{sessionId}
 ```
 
 **New format:**
@@ -466,9 +496,8 @@ strategies:
 strategies:
   - SemanticMemoryStrategy:
       Name: Search
-      Type: SEMANTIC
-      SemanticMemoryConfiguration:
-        ModelId: amazon.titan-embed-text-v2:0
+      Namespaces:
+        - /sessions/{sessionId}
 ```
 
 ## License

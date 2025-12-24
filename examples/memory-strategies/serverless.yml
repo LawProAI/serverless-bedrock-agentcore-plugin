@@ -25,16 +25,10 @@ agents:
     strategies:
       - SemanticMemoryStrategy:
           Name: ConversationSearch
-          Type: SEMANTIC
           Description: Enables semantic search over conversation history
           Namespaces:
             - /conversations/{sessionId}
             - /users/{userId}/chats
-          SemanticMemoryConfiguration:
-            # Embedding model for semantic search
-            ModelId: amazon.titan-embed-text-v2:0
-            # Minimum similarity score (0.0 to 1.0)
-            SimilarityThreshold: 0.75
 
   # Example 2: Summary Memory Strategy
   # Use for maintaining condensed conversation context
@@ -45,13 +39,9 @@ agents:
     strategies:
       - SummaryMemoryStrategy:
           Name: ConversationSummary
-          Type: SUMMARIZATION
           Description: Summarizes long conversations to maintain context
-          SummaryConfiguration:
-            # Model used for generating summaries
-            SummaryModelId: anthropic.claude-3-haiku-20240307-v1:0
-            # Maximum messages before triggering summary
-            MaxMessages: 50
+          Namespaces:
+            - /sessions/{sessionId}
 
   # Example 3: User Preference Memory Strategy
   # Use for tracking user preferences across sessions
@@ -62,14 +52,10 @@ agents:
     strategies:
       - UserPreferenceMemoryStrategy:
           Name: UserSettings
-          Type: USER_PREFERENCE
           Description: Tracks user preferences and settings
           Namespaces:
             - /users/{userId}/preferences
             - /users/{userId}/settings
-          UserPreferenceConfiguration:
-            # Model for extracting preferences from conversations
-            ExtractionModelId: anthropic.claude-3-haiku-20240307-v1:0
 
   # Example 4: Custom Memory Strategy
   # Use for application-specific memory handling
@@ -80,9 +66,8 @@ agents:
     strategies:
       - CustomMemoryStrategy:
           Name: ApplicationSpecific
-          Type: CUSTOM
           Description: Custom memory handling for specific use cases
-          CustomConfiguration:
+          Configuration:
             customField: customValue
             processingMode: batch
             retentionPolicy: archive
@@ -97,25 +82,18 @@ agents:
       # Semantic search for finding relevant past conversations
       - SemanticMemoryStrategy:
           Name: SemanticSearch
-          Type: SEMANTIC
           Namespaces:
             - /conversations/{sessionId}
-          SemanticMemoryConfiguration:
-            ModelId: amazon.titan-embed-text-v2:0
-            SimilarityThreshold: 0.7
 
       # Summarization for context management
       - SummaryMemoryStrategy:
           Name: ContextSummary
-          Type: SUMMARIZATION
-          SummaryConfiguration:
-            SummaryModelId: anthropic.claude-3-haiku-20240307-v1:0
-            MaxMessages: 100
+          Namespaces:
+            - /sessions/{sessionId}
 
       # User preferences for personalization
       - UserPreferenceMemoryStrategy:
           Name: Preferences
-          Type: USER_PREFERENCE
           Namespaces:
             - /users/{userId}
 
@@ -130,11 +108,7 @@ agents:
         name: LegacySearch
         namespaces:
           - /legacy/{sessionId}
-        configuration:
-          modelId: amazon.titan-embed-text-v2:0
-          similarityThreshold: 0.8
       - type: summary
         name: LegacySummary
-        configuration:
-          summaryModelId: anthropic.claude-3-haiku-20240307-v1:0
-          maxMessages: 50
+        namespaces:
+          - /legacy/{sessionId}

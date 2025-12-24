@@ -126,28 +126,17 @@ function defineAgentsSchema(serverless) {
           type: 'array',
           items: {
             type: 'object',
-            properties: {
-              type: {
-                type: 'string',
-                enum: ['semantic', 'userPreference', 'summary', 'custom'],
-              },
-              name: { type: 'string' },
-              namespaces: {
-                type: 'array',
-                items: { type: 'string' },
-              },
-              configuration: {
-                type: 'object',
-              },
-            },
-            required: ['type', 'name'],
+            // Supports both legacy format and new typed union format
+            // Legacy: { type: 'semantic', name: 'Search', ... }
+            // New: { SemanticMemoryStrategy: { Name: 'Search', ... } }
+            additionalProperties: true,
           },
         },
 
         // Gateway-specific properties
         authorizerType: {
           type: 'string',
-          enum: ['AWS_IAM', 'CUSTOM_JWT'],
+          enum: ['NONE', 'AWS_IAM', 'CUSTOM_JWT'],
         },
         protocolType: {
           type: 'string',
@@ -156,17 +145,20 @@ function defineAgentsSchema(serverless) {
         authorizerConfiguration: {
           type: 'object',
           properties: {
-            allowedAudiences: {
-              type: 'array',
-              items: { type: 'string' },
-            },
-            allowedClients: {
-              type: 'array',
-              items: { type: 'string' },
-            },
-            allowedIssuers: {
-              type: 'array',
-              items: { type: 'string' },
+            customJwtAuthorizer: {
+              type: 'object',
+              properties: {
+                discoveryUrl: { type: 'string' },
+                allowedAudience: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
+                allowedClients: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
+              },
+              required: ['discoveryUrl'],
             },
           },
         },
