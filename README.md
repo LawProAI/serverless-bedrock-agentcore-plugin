@@ -89,22 +89,22 @@ agents:
         - Authorization
 ```
 
-| Property                                  | Required | Description                                              |
-| ----------------------------------------- | -------- | -------------------------------------------------------- |
-| `type`                                    | Yes      | `runtime`                                                |
-| `artifact.docker.path`                    | Yes\*    | Docker build context path                                |
-| `artifact.docker.file`                    | No       | Dockerfile name (default: Dockerfile)                    |
-| `artifact.docker.repository`              | No       | ECR repository name                                      |
-| `artifact.containerImage`                 | Yes\*    | Pre-built container image URI                            |
-| `protocol`                                | No       | `HTTP`, `MCP`, or `A2A`                                  |
-| `network.networkMode`                     | No       | `PUBLIC` or `VPC`                                        |
-| `authorizer.customJwtAuthorizer`          | No       | JWT authorizer config (omit for no auth)                 |
-| `authorizer.customJwtAuthorizer.discoveryUrl` | Yes\*\* | OIDC discovery URL                                   |
-| `authorizer.customJwtAuthorizer.allowedAudience` | No  | Array of allowed audience values                         |
-| `authorizer.customJwtAuthorizer.allowedClients` | No   | Array of allowed client IDs                              |
-| `requestHeaders.allowlist`                | No       | Headers to pass to runtime (max 20)                      |
-| `description`                             | No       | Runtime description                                      |
-| `roleArn`                                 | No       | Custom IAM role ARN                                      |
+| Property                                         | Required | Description                              |
+| ------------------------------------------------ | -------- | ---------------------------------------- |
+| `type`                                           | Yes      | `runtime`                                |
+| `artifact.docker.path`                           | Yes\*    | Docker build context path                |
+| `artifact.docker.file`                           | No       | Dockerfile name (default: Dockerfile)    |
+| `artifact.docker.repository`                     | No       | ECR repository name                      |
+| `artifact.containerImage`                        | Yes\*    | Pre-built container image URI            |
+| `protocol`                                       | No       | `HTTP`, `MCP`, or `A2A`                  |
+| `network.networkMode`                            | No       | `PUBLIC` or `VPC`                        |
+| `authorizer.customJwtAuthorizer`                 | No       | JWT authorizer config (omit for no auth) |
+| `authorizer.customJwtAuthorizer.discoveryUrl`    | Yes\*\*  | OIDC discovery URL                       |
+| `authorizer.customJwtAuthorizer.allowedAudience` | No       | Array of allowed audience values         |
+| `authorizer.customJwtAuthorizer.allowedClients`  | No       | Array of allowed client IDs              |
+| `requestHeaders.allowlist`                       | No       | Headers to pass to runtime (max 20)      |
+| `description`                                    | No       | Runtime description                      |
+| `roleArn`                                        | No       | Custom IAM role ARN                      |
 
 \*Either `artifact.docker` or `artifact.containerImage` is required
 
@@ -298,18 +298,18 @@ agents:
             - Arn
 ```
 
-| Property         | Required | Description                                            |
-| ---------------- | -------- | ------------------------------------------------------ |
-| `type`           | Yes      | `gateway`                                              |
-| `authorizerType` | No       | `NONE`, `AWS_IAM`, or `CUSTOM_JWT` (default: `AWS_IAM`) |
-| `authorizerConfiguration.customJwtAuthorizer` | No* | JWT authorizer config (required when `authorizerType: CUSTOM_JWT`) |
-| `authorizerConfiguration.customJwtAuthorizer.discoveryUrl` | Yes** | OIDC discovery URL |
-| `authorizerConfiguration.customJwtAuthorizer.allowedAudience` | No | Array of allowed audience values |
-| `authorizerConfiguration.customJwtAuthorizer.allowedClients` | No | Array of allowed client IDs |
-| `protocolType`   | No       | `MCP` (default: `MCP`)                                 |
-| `targets`        | No       | Gateway targets (Lambda functions)                     |
-| `description`    | No       | Gateway description                                    |
-| `roleArn`        | No       | Custom IAM role ARN                                    |
+| Property                                                      | Required | Description                                                        |
+| ------------------------------------------------------------- | -------- | ------------------------------------------------------------------ |
+| `type`                                                        | Yes      | `gateway`                                                          |
+| `authorizerType`                                              | No       | `NONE`, `AWS_IAM`, or `CUSTOM_JWT` (default: `AWS_IAM`)            |
+| `authorizerConfiguration.customJwtAuthorizer`                 | No\*     | JWT authorizer config (required when `authorizerType: CUSTOM_JWT`) |
+| `authorizerConfiguration.customJwtAuthorizer.discoveryUrl`    | Yes\*\*  | OIDC discovery URL                                                 |
+| `authorizerConfiguration.customJwtAuthorizer.allowedAudience` | No       | Array of allowed audience values                                   |
+| `authorizerConfiguration.customJwtAuthorizer.allowedClients`  | No       | Array of allowed client IDs                                        |
+| `protocolType`                                                | No       | `MCP` (default: `MCP`)                                             |
+| `targets`                                                     | No       | Gateway targets (Lambda functions)                                 |
+| `description`                                                 | No       | Gateway description                                                |
+| `roleArn`                                                     | No       | Custom IAM role ARN                                                |
 
 \*Required when `authorizerType` is `CUSTOM_JWT`
 
