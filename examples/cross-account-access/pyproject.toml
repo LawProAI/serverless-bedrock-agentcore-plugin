@@ -1,0 +1,10 @@
+[project]
+name = "cross-account-agent"
+version = "1.0.0"
+description = "AgentCore Runtime agent demonstrating cross-account access"
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,43 @@
+service: cross-account-agent
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+
+plugins:
+  - ../../ # Local plugin reference (use 'serverless-bedrock-agentcore' when installed from npm)
+
+custom:
+  agentCore:
+    defaultTags:
+      Project: ${self:service}
+      ManagedBy: Serverless
+
+agents:
+  # AgentCore Runtime with cross-account access
+  myAgent:
+    type: runtime
+    description: Agent with cross-account access via resource policy
+    artifact:
+      docker:
+        path: .
+        file: Dockerfile
+        repository: cross-account-agent
+    protocol: HTTP
+    network:
+      networkMode: PUBLIC
+    # Resource-based policy allowing cross-account invocation
+    # This example allows an ECS task role from account 123456789012 to invoke the agent
+    resourcePolicy:
+      Version: '2012-10-17'
+      Statement:
+        - Sid: AllowCrossAccountInvoke
+          Effect: Allow
+          Principal:
+            AWS: arn:aws:iam::123456789012:role/my-app-${self:provider.stage}-ecs-task-role
+          Action:
+            - bedrock-agentcore:InvokeAgentRuntime
+          Resource: '*'

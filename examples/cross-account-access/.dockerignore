@@ -1,0 +1,6 @@
+README.md
+.serverless/
+node_modules/
+*.log
+.git/
+.gitignore
