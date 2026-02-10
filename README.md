@@ -100,24 +100,24 @@ agents:
           Resource: '*'
 ```
 
-| Property                                         | Required | Description                              |
-| ------------------------------------------------ | -------- | ---------------------------------------- |
-| `type`                                           | Yes      | `runtime`                                |
-| `artifact.docker.path`                           | Yes\*    | Docker build context path                |
-| `artifact.docker.file`                           | No       | Dockerfile name (default: Dockerfile)    |
-| `artifact.docker.repository`                     | No       | ECR repository name                      |
-| `artifact.containerImage`                        | Yes\*    | Pre-built container image URI            |
-| `protocol`                                       | No       | `HTTP`, `MCP`, or `A2A`                  |
-| `network.networkMode`                            | No       | `PUBLIC` or `VPC`                        |
-| `authorizer.customJwtAuthorizer`                 | No       | JWT authorizer config (omit for no auth) |
-| `authorizer.customJwtAuthorizer.discoveryUrl`    | Yes\*\*  | OIDC discovery URL                       |
-| `authorizer.customJwtAuthorizer.allowedAudience` | No       | Array of allowed audience values         |
-| `authorizer.customJwtAuthorizer.allowedClients`  | No       | Array of allowed client IDs              |
-| `requestHeaders.allowlist`                       | No       | Headers to pass to runtime (max 20)      |
-| `resourcePolicy`                                 | No       | Resource-based policy (IAM policy doc)   |
-| `resourcePolicy.Statement`                       | Yes\*\*\* | Array of policy statements              |
-| `description`                                    | No       | Runtime description                      |
-| `roleArn`                                        | No       | Custom IAM role ARN                      |
+| Property                                         | Required  | Description                              |
+| ------------------------------------------------ | --------- | ---------------------------------------- |
+| `type`                                           | Yes       | `runtime`                                |
+| `artifact.docker.path`                           | Yes\*     | Docker build context path                |
+| `artifact.docker.file`                           | No        | Dockerfile name (default: Dockerfile)    |
+| `artifact.docker.repository`                     | No        | ECR repository name                      |
+| `artifact.containerImage`                        | Yes\*     | Pre-built container image URI            |
+| `protocol`                                       | No        | `HTTP`, `MCP`, or `A2A`                  |
+| `network.networkMode`                            | No        | `PUBLIC` or `VPC`                        |
+| `authorizer.customJwtAuthorizer`                 | No        | JWT authorizer config (omit for no auth) |
+| `authorizer.customJwtAuthorizer.discoveryUrl`    | Yes\*\*   | OIDC discovery URL                       |
+| `authorizer.customJwtAuthorizer.allowedAudience` | No        | Array of allowed audience values         |
+| `authorizer.customJwtAuthorizer.allowedClients`  | No        | Array of allowed client IDs              |
+| `requestHeaders.allowlist`                       | No        | Headers to pass to runtime (max 20)      |
+| `resourcePolicy`                                 | No        | Resource-based policy (IAM policy doc)   |
+| `resourcePolicy.Statement`                       | Yes\*\*\* | Array of policy statements               |
+| `description`                                    | No        | Runtime description                      |
+| `roleArn`                                        | No        | Custom IAM role ARN                      |
 
 \*Either `artifact.docker` or `artifact.containerImage` is required
 
@@ -130,6 +130,7 @@ agents:
 Resource-based policies allow you to grant cross-account or cross-principal access to invoke your AgentCore runtime. This is useful when you need to allow another AWS account or service to invoke your agent.
 
 Example use cases:
+
 - **Cross-account access**: Allow an ECS task in another account to invoke your agent
 - **Service-to-service**: Grant specific IAM roles permission to invoke the runtime
 - **Multi-tenant architectures**: Control access across different AWS accounts

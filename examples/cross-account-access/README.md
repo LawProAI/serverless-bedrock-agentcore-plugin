@@ -83,12 +83,16 @@ aws cloudformation get-template \
 From the caller account (123456789012), invoke the agent:
 
 ```javascript
-import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore';
+import {
+  BedrockAgentCoreClient,
+  InvokeAgentRuntimeCommand,
+} from '@aws-sdk/client-bedrock-agentcore';
 
 const client = new BedrockAgentCoreClient({ region: 'us-east-1' });
 
 const command = new InvokeAgentRuntimeCommand({
-  agentRuntimeArn: 'arn:aws:bedrock-agentcore:us-east-1:026090513638:runtime/cross_account_agent_myAgent_dev-<id>',
+  agentRuntimeArn:
+    'arn:aws:bedrock-agentcore:us-east-1:026090513638:runtime/cross_account_agent_myAgent_dev-<id>',
   payload: JSON.stringify({ message: 'Hello from another account!' }),
   runtimeSessionId: 'session-123',
   runtimeUserId: 'user-456',
