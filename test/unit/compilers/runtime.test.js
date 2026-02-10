@@ -9,6 +9,7 @@ const {
   buildProtocolConfiguration,
   buildEnvironmentVariables,
   buildRequestHeaderConfiguration,
+  buildResourcePolicy,
 } = require('../../../src/compilers/runtime');
 
 describe('Runtime Compiler', () => {
@@ -285,6 +286,101 @@ describe('Runtime Compiler', () => {
     });
   });
 
+  describe('buildResourcePolicy', () => {
+    test('returns null when no resource policy', () => {
+      const result = buildResourcePolicy(null);
+      expect(result).toBeNull();
+    });
+
+    test('returns null when Statement is empty', () => {
+      const resourcePolicy = { Statement: [] };
+      const result = buildResourcePolicy(resourcePolicy);
+      expect(result).toBeNull();
+    });
+
+    test('builds resource policy with default version', () => {
+      const resourcePolicy = {
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: {
+              AWS: 'arn:aws:iam::123456789012:role/MyRole',
+            },
+            Action: 'bedrock-agentcore:InvokeAgentRuntime',
+            Resource: '*',
+          },
+        ],
+      };
+
+      const result = buildResourcePolicy(resourcePolicy);
+
+      expect(result).toEqual({
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: {
+              AWS: 'arn:aws:iam::123456789012:role/MyRole',
+            },
+            Action: 'bedrock-agentcore:InvokeAgentRuntime',
+            Resource: '*',
+          },
+        ],
+      });
+    });
+
+    test('builds resource policy with explicit version', () => {
+      const resourcePolicy = {
+        Version: '2008-10-17',
+        Statement: [
+          {
+            Sid: 'AllowCrossAccountInvoke',
+            Effect: 'Allow',
+            Principal: {
+              AWS: 'arn:aws:iam::123456789012:role/MyRole',
+            },
+            Action: ['bedrock-agentcore:InvokeAgentRuntime'],
+            Resource: '*',
+          },
+        ],
+      };
+
+      const result = buildResourcePolicy(resourcePolicy);
+
+      expect(result).toEqual(resourcePolicy);
+    });
+
+    test('builds resource policy with multiple statements', () => {
+      const resourcePolicy = {
+        Statement: [
+          {
+            Sid: 'AllowAccount1',
+            Effect: 'Allow',
+            Principal: {
+              AWS: 'arn:aws:iam::111111111111:role/Role1',
+            },
+            Action: 'bedrock-agentcore:InvokeAgentRuntime',
+            Resource: '*',
+          },
+          {
+            Sid: 'AllowAccount2',
+            Effect: 'Allow',
+            Principal: {
+              AWS: 'arn:aws:iam::222222222222:role/Role2',
+            },
+            Action: 'bedrock-agentcore:InvokeAgentRuntime',
+            Resource: '*',
+          },
+        ],
+      };
+
+      const result = buildResourcePolicy(resourcePolicy);
+
+      expect(result.Statement).toHaveLength(2);
+      expect(result.Version).toBe('2012-10-17');
+    });
+  });
+
   describe('compileRuntime', () => {
     test('generates valid CloudFormation with minimal config', () => {
       const config = {
@@ -376,6 +472,58 @@ describe('Runtime Compiler', () => {
       const result = compileRuntime('myAgent', config, baseContext, baseTags);
 
       expect(result.Properties.RequestHeaderConfiguration).toBeUndefined();
+    });
+
+    test('includes ResourcePolicy when resourcePolicy is provided', () => {
+      const config = {
+        type: 'runtime',
+        artifact: {
+          containerImage: '123456789.dkr.ecr.us-west-2.amazonaws.com/my-agent:latest',
+        },
+        resourcePolicy: {
+          Statement: [
+            {
+              Sid: 'AllowCrossAccountInvoke',
+              Effect: 'Allow',
+              Principal: {
+                AWS: 'arn:aws:iam::627907908553:role/lawproai-dev-ecs-task-role',
+              },
+              Action: 'bedrock-agentcore:InvokeAgentRuntime',
+              Resource: '*',
+            },
+          ],
+        },
+      };
+
+      const result = compileRuntime('myAgent', config, baseContext, baseTags);
+
+      expect(result.Properties.ResourcePolicy).toEqual({
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Sid: 'AllowCrossAccountInvoke',
+            Effect: 'Allow',
+            Principal: {
+              AWS: 'arn:aws:iam::627907908553:role/lawproai-dev-ecs-task-role',
+            },
+            Action: 'bedrock-agentcore:InvokeAgentRuntime',
+            Resource: '*',
+          },
+        ],
+      });
+    });
+
+    test('omits ResourcePolicy when resourcePolicy is not provided', () => {
+      const config = {
+        type: 'runtime',
+        artifact: {
+          containerImage: '123456789.dkr.ecr.us-west-2.amazonaws.com/my-agent:latest',
+        },
+      };
+
+      const result = compileRuntime('myAgent', config, baseContext, baseTags);
+
+      expect(result.Properties.ResourcePolicy).toBeUndefined();
     });
   });
 

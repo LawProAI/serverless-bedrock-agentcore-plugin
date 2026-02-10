@@ -101,6 +101,57 @@ function defineAgentsSchema(serverless) {
             maxConcurrency: { type: 'number' },
           },
         },
+        resourcePolicy: {
+          type: 'object',
+          properties: {
+            Version: { type: 'string' },
+            Statement: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  Sid: { type: 'string' },
+                  Effect: {
+                    type: 'string',
+                    enum: ['Allow', 'Deny'],
+                  },
+                  Principal: { type: 'object' },
+                  Action: {
+                    oneOf: [
+                      { type: 'string' },
+                      {
+                        type: 'array',
+                        items: { type: 'string' },
+                      },
+                    ],
+                  },
+                  Resource: {
+                    oneOf: [
+                      { type: 'string' },
+                      {
+                        type: 'array',
+                        items: { type: 'string' },
+                      },
+                    ],
+                  },
+                  Condition: { type: 'object' },
+                },
+                required: ['Effect', 'Principal', 'Action'],
+              },
+            },
+          },
+          required: ['Statement'],
+        },
+        requestHeaders: {
+          type: 'object',
+          properties: {
+            allowlist: {
+              type: 'array',
+              items: { type: 'string' },
+              maxItems: 20,
+            },
+          },
+        },
         endpoints: {
           type: 'array',
           items: {

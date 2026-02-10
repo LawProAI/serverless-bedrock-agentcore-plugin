@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Resource-based policy support for AgentCore Runtime
+  - Enable cross-account access to agent runtimes
+  - Standard IAM policy document format
+  - Support for multiple principals and statements
+- New example: `cross-account-access` demonstrating resource policy usage
+- Schema validation for `resourcePolicy` configuration
+- Test coverage for resource policy builder functions
+
 ## [0.2.0] - 2025-12-19
 
 ### Added
