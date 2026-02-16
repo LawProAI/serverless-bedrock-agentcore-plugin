@@ -860,6 +860,153 @@ describe('ServerlessBedrockAgentCore', () => {
     });
   });
 
+  describe('applyResourcePolicies', () => {
+    test('returns early when no agents defined', async () => {
+      mockServerless.service.agents = {};
+      plugin = new ServerlessBedrockAgentCore(mockServerless, mockOptions, mockUtils);
+
+      await plugin.applyResourcePolicies();
+
+      expect(mockServerless.getProvider().request).not.toHaveBeenCalled();
+    });
+
+    test('returns early when no agents have resourcePolicy', async () => {
+      mockServerless.service.agents = {
+        myAgent: {
+          type: 'runtime',
+          artifact: { containerImage: 'test:latest' },
+        },
+      };
+      plugin = new ServerlessBedrockAgentCore(mockServerless, mockOptions, mockUtils);
+
+      await plugin.applyResourcePolicies();
+
+      expect(mockServerless.getProvider().request).not.toHaveBeenCalled();
+    });
+
+    test('skips non-runtime agents with resourcePolicy', async () => {
+      mockServerless.service.agents = {
+        myMemory: {
+          type: 'memory',
+          resourcePolicy: {
+            Statement: [
+              { Effect: 'Allow', Principal: { AWS: '*' }, Action: 'bedrock-agentcore:*' },
+            ],
+          },
+        },
+      };
+      plugin = new ServerlessBedrockAgentCore(mockServerless, mockOptions, mockUtils);
+
+      await plugin.applyResourcePolicies();
+
+      expect(mockServerless.getProvider().request).not.toHaveBeenCalled();
+    });
+
+    test('applies resource policy via BedrockAgentCoreControl API', async () => {
+      mockServerless.service.agents = {
+        myAgent: {
+          type: 'runtime',
+          artifact: { containerImage: 'test:latest' },
+          resourcePolicy: {
+            Statement: [
+              {
+                Effect: 'Allow',
+                Principal: {
+                  AWS: 'arn:aws:iam::123456789012:role/MyRole',
+                },
+                Action: 'bedrock-agentcore:InvokeAgentRuntime',
+                Resource: '*',
+              },
+            ],
+          },
+        },
+      };
+      plugin = new ServerlessBedrockAgentCore(mockServerless, mockOptions, mockUtils);
+
+      const mockProvider = mockServerless.getProvider();
+      mockProvider.request.mockImplementation((service, action) => {
+        if (service === 'CloudFormation' && action === 'describeStacks') {
+          return Promise.resolve({
+            Stacks: [
+              {
+                Outputs: [
+                  {
+                    OutputKey: 'MyagentRuntimeArn',
+                    OutputValue:
+                      'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
+                  },
+                ],
+              },
+            ],
+          });
+        }
+        if (service === 'BedrockAgentCoreControl' && action === 'putResourcePolicy') {
+          return Promise.resolve({});
+        }
+        return Promise.resolve({});
+      });
+
+      await plugin.applyResourcePolicies();
+
+      expect(mockProvider.request).toHaveBeenCalledWith(
+        'BedrockAgentCoreControl',
+        'putResourcePolicy',
+        {
+          resourceArn:
+            'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
+          policy: expect.stringContaining('"Version":"2012-10-17"'),
+        }
+      );
+    });
+
+    test('throws error when API call fails', async () => {
+      mockServerless.service.agents = {
+        myAgent: {
+          type: 'runtime',
+          artifact: { containerImage: 'test:latest' },
+          resourcePolicy: {
+            Statement: [
+              {
+                Effect: 'Allow',
+                Principal: { AWS: 'arn:aws:iam::123456789012:role/MyRole' },
+                Action: 'bedrock-agentcore:InvokeAgentRuntime',
+                Resource: '*',
+              },
+            ],
+          },
+        },
+      };
+      plugin = new ServerlessBedrockAgentCore(mockServerless, mockOptions, mockUtils);
+
+      const mockProvider = mockServerless.getProvider();
+      mockProvider.request.mockImplementation((service, action) => {
+        if (service === 'CloudFormation' && action === 'describeStacks') {
+          return Promise.resolve({
+            Stacks: [
+              {
+                Outputs: [
+                  {
+                    OutputKey: 'MyagentRuntimeArn',
+                    OutputValue:
+                      'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
+                  },
+                ],
+              },
+            ],
+          });
+        }
+        if (service === 'BedrockAgentCoreControl' && action === 'putResourcePolicy') {
+          return Promise.reject(new Error('Access denied'));
+        }
+        return Promise.resolve({});
+      });
+
+      await expect(plugin.applyResourcePolicies()).rejects.toThrow(
+        "Failed to apply resource policy for 'myAgent': Access denied"
+      );
+    });
+  });
+
   describe('showInfo', () => {
     test('shows message when no agents defined', async () => {
       plugin = new ServerlessBedrockAgentCore(mockServerless, mockOptions, mockUtils);

@@ -1,6 +1,6 @@
 'use strict';
 
-const { compileRuntime } = require('./compilers/runtime');
+const { compileRuntime, buildResourcePolicy } = require('./compilers/runtime');
 const { compileRuntimeEndpoint } = require('./compilers/runtimeEndpoint');
 const { compileMemory } = require('./compilers/memory');
 const { compileGateway } = require('./compilers/gateway');
@@ -137,8 +137,11 @@ class ServerlessBedrockAgentCore {
       'after:package:compileFunctions': () => this.compileAgentCoreResources(),
       'before:package:finalize': () => this.compileAgentCoreResources(),
 
-      // Post-deploy info
-      'after:deploy:deploy': () => this.displayDeploymentInfo(),
+      // Post-deploy: apply resource policies, then display info
+      'after:deploy:deploy': async () => {
+        await this.applyResourcePolicies();
+        await this.displayDeploymentInfo();
+      },
 
       // Custom commands
       'agentcore:info:info': () => this.showInfo(),
@@ -969,6 +972,56 @@ class ServerlessBedrockAgentCore {
     for (const [name, config] of Object.entries(agents)) {
       const type = config.type.charAt(0).toUpperCase() + config.type.slice(1);
       this.log.notice(`  ${name} (${type})`);
+    }
+  }
+
+  /**
+   * Apply resource policies to runtimes after deployment.
+   * CloudFormation doesn't support ResourcePolicy on AWS::BedrockAgentCore::Runtime,
+   * so we apply it via the bedrock-agentcore-control put-resource-policy API after deploy.
+   */
+  async applyResourcePolicies() {
+    const agents = this.getAgentsConfig();
+
+    if (!agents || Object.keys(agents).length === 0) {
+      return;
+    }
+
+    const agentsWithPolicies = Object.entries(agents).filter(
+      ([, config]) => config.type === 'runtime' && config.resourcePolicy
+    );
+
+    if (agentsWithPolicies.length === 0) {
+      return;
+    }
+
+    this.log.info(
+      `Applying resource policies for ${agentsWithPolicies.length} runtime(s)...`
+    );
+
+    for (const [name, config] of agentsWithPolicies) {
+      try {
+        this.log.info(`  Applying resource policy for '${name}'...`);
+
+        const runtimeArn = await this.getRuntimeArn(name);
+        const policyDocument = buildResourcePolicy(config.resourcePolicy);
+
+        if (!policyDocument) {
+          this.log.warning(`  Skipping '${name}': resource policy has no statements`);
+          continue;
+        }
+
+        await this.provider.request('BedrockAgentCoreControl', 'putResourcePolicy', {
+          resourceArn: runtimeArn,
+          policy: JSON.stringify(policyDocument),
+        });
+
+        this.log.info(`  Resource policy applied successfully for '${name}'`);
+      } catch (error) {
+        throw new this.serverless.classes.Error(
+          `Failed to apply resource policy for '${name}': ${error.message}`
+        );
+      }
     }
   }
 

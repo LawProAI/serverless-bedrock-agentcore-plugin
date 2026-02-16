@@ -474,7 +474,7 @@ describe('Runtime Compiler', () => {
       expect(result.Properties.RequestHeaderConfiguration).toBeUndefined();
     });
 
-    test('includes ResourcePolicy when resourcePolicy is provided', () => {
+    test('does NOT include ResourcePolicy in CFN output (applied via API post-deploy)', () => {
       const config = {
         type: 'runtime',
         artifact: {
@@ -497,20 +497,9 @@ describe('Runtime Compiler', () => {
 
       const result = compileRuntime('myAgent', config, baseContext, baseTags);
 
-      expect(result.Properties.ResourcePolicy).toEqual({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Sid: 'AllowCrossAccountInvoke',
-            Effect: 'Allow',
-            Principal: {
-              AWS: 'arn:aws:iam::627907908553:role/lawproai-dev-ecs-task-role',
-            },
-            Action: 'bedrock-agentcore:InvokeAgentRuntime',
-            Resource: '*',
-          },
-        ],
-      });
+      // ResourcePolicy is not a valid CFN property on AWS::BedrockAgentCore::Runtime.
+      // It is applied via the bedrock-agentcore-control put-resource-policy API after deploy.
+      expect(result.Properties.ResourcePolicy).toBeUndefined();
     });
 
     test('omits ResourcePolicy when resourcePolicy is not provided', () => {
