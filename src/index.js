@@ -995,9 +995,7 @@ class ServerlessBedrockAgentCore {
       return;
     }
 
-    this.log.info(
-      `Applying resource policies for ${agentsWithPolicies.length} runtime(s)...`
-    );
+    this.log.info(`Applying resource policies for ${agentsWithPolicies.length} runtime(s)...`);
 
     for (const [name, config] of agentsWithPolicies) {
       try {

@@ -932,8 +932,7 @@ describe('ServerlessBedrockAgentCore', () => {
                 Outputs: [
                   {
                     OutputKey: 'MyagentRuntimeArn',
-                    OutputValue:
-                      'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
+                    OutputValue: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
                   },
                 ],
               },
@@ -952,8 +951,7 @@ describe('ServerlessBedrockAgentCore', () => {
         'BedrockAgentCoreControl',
         'putResourcePolicy',
         {
-          resourceArn:
-            'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
+          resourceArn: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
           policy: expect.stringContaining('"Version":"2012-10-17"'),
         }
       );
@@ -987,8 +985,7 @@ describe('ServerlessBedrockAgentCore', () => {
                 Outputs: [
                   {
                     OutputKey: 'MyagentRuntimeArn',
-                    OutputValue:
-                      'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
+                    OutputValue: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
                   },
                 ],
               },
