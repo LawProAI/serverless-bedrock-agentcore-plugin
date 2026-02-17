@@ -187,15 +187,15 @@ function buildRequestHeaderConfiguration(requestHeaders) {
  * Allows cross-account or cross-principal access to invoke the agent
  *
  * @param {Object} resourcePolicy - The resource policy configuration from serverless.yml
- * @returns {Object|null} CloudFormation ResourcePolicy or null
+ * @returns {Object|null} IAM policy document or null
  */
 function buildResourcePolicy(resourcePolicy) {
   if (!resourcePolicy || !resourcePolicy.Statement || resourcePolicy.Statement.length === 0) {
     return null;
   }
 
-  // CloudFormation expects the policy as a JSON object
-  // The policy should be in standard IAM policy document format
+  // Return standard IAM policy document format
+  // Applied via bedrock-agentcore-control put-resource-policy API after deploy
   return {
     Version: resourcePolicy.Version || '2012-10-17',
     Statement: resourcePolicy.Statement,
@@ -223,7 +223,10 @@ function compileRuntime(name, config, context, tags) {
   const protocolConfig = buildProtocolConfiguration(config.protocol);
   const envVars = buildEnvironmentVariables(config.environment);
   const requestHeaderConfig = buildRequestHeaderConfiguration(config.requestHeaders);
-  const resourcePolicy = buildResourcePolicy(config.resourcePolicy);
+
+  // Note: resourcePolicy is NOT included in CFN properties.
+  // CloudFormation doesn't support ResourcePolicy on AWS::BedrockAgentCore::Runtime.
+  // It is applied via the bedrock-agentcore-control put-resource-policy API after deploy.
 
   return {
     Type: 'AWS::BedrockAgentCore::Runtime',
@@ -238,7 +241,6 @@ function compileRuntime(name, config, context, tags) {
       ...(protocolConfig && { ProtocolConfiguration: protocolConfig }),
       ...(envVars && { EnvironmentVariables: envVars }),
       ...(requestHeaderConfig && { RequestHeaderConfiguration: requestHeaderConfig }),
-      ...(resourcePolicy && { ResourcePolicy: resourcePolicy }),
       ...(Object.keys(tags).length > 0 && { Tags: tags }),
     },
   };
