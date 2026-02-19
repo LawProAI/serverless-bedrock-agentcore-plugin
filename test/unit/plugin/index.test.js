@@ -1,5 +1,11 @@
 'use strict';
 
+const mockSend = jest.fn();
+jest.mock('@aws-sdk/client-bedrock-agentcore-control', () => ({
+  BedrockAgentCoreControlClient: jest.fn(() => ({ send: mockSend })),
+  PutResourcePolicyCommand: jest.fn((params) => ({ ...params, _type: 'PutResourcePolicyCommand' })),
+}));
+
 const ServerlessBedrockAgentCore = require('../../../src/index');
 
 describe('ServerlessBedrockAgentCore', () => {
@@ -9,6 +15,7 @@ describe('ServerlessBedrockAgentCore', () => {
   let plugin;
 
   beforeEach(() => {
+    mockSend.mockReset();
     mockServerless = {
       service: {
         service: 'test-service',
@@ -902,7 +909,7 @@ describe('ServerlessBedrockAgentCore', () => {
       expect(mockServerless.getProvider().request).not.toHaveBeenCalled();
     });
 
-    test('applies resource policy via BedrockAgentCoreControl API', async () => {
+    test('applies resource policy via SDK v3 BedrockAgentCoreControlClient', async () => {
       mockServerless.service.agents = {
         myAgent: {
           type: 'runtime',
@@ -939,22 +946,18 @@ describe('ServerlessBedrockAgentCore', () => {
             ],
           });
         }
-        if (service === 'BedrockAgentCoreControl' && action === 'putResourcePolicy') {
-          return Promise.resolve({});
-        }
         return Promise.resolve({});
       });
+      mockSend.mockResolvedValue({});
 
       await plugin.applyResourcePolicies();
 
-      expect(mockProvider.request).toHaveBeenCalledWith(
-        'BedrockAgentCoreControl',
-        'putResourcePolicy',
-        {
-          resourceArn: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
-          policy: expect.stringContaining('"Version":"2012-10-17"'),
-        }
-      );
+      const { PutResourcePolicyCommand } = require('@aws-sdk/client-bedrock-agentcore-control');
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      expect(PutResourcePolicyCommand).toHaveBeenCalledWith({
+        resourceArn: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
+        policy: expect.stringContaining('"Version":"2012-10-17"'),
+      });
     });
 
     test('throws error when API call fails', async () => {
@@ -992,11 +995,9 @@ describe('ServerlessBedrockAgentCore', () => {
             ],
           });
         }
-        if (service === 'BedrockAgentCoreControl' && action === 'putResourcePolicy') {
-          return Promise.reject(new Error('Access denied'));
-        }
         return Promise.resolve({});
       });
+      mockSend.mockRejectedValue(new Error('Access denied'));
 
       await expect(plugin.applyResourcePolicies()).rejects.toThrow(
         "Failed to apply resource policy for 'myAgent': Access denied"

@@ -19,6 +19,10 @@ const { getLogicalId } = require('./utils/naming');
 const { mergeTags } = require('./utils/tags');
 const { defineAgentsSchema } = require('./validators/schema');
 const { DockerBuilder } = require('./docker/builder');
+const {
+  BedrockAgentCoreControlClient,
+  PutResourcePolicyCommand,
+} = require('@aws-sdk/client-bedrock-agentcore-control');
 
 /**
  * Serverless Framework plugin for AWS Bedrock AgentCore
@@ -1009,10 +1013,15 @@ class ServerlessBedrockAgentCore {
           continue;
         }
 
-        await this.provider.request('BedrockAgentCoreControl', 'putResourcePolicy', {
-          resourceArn: runtimeArn,
-          policy: JSON.stringify(policyDocument),
+        const client = new BedrockAgentCoreControlClient({
+          region: this.provider.getRegion(),
         });
+        await client.send(
+          new PutResourcePolicyCommand({
+            resourceArn: runtimeArn,
+            policy: JSON.stringify(policyDocument),
+          })
+        );
 
         this.log.info(`  Resource policy applied successfully for '${name}'`);
       } catch (error) {

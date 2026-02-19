@@ -1,6 +1,6 @@
 {
   "name": "serverless-bedrock-agentcore-plugin",
-  "version": "0.2.0",
+  "version": "0.5.1",
   "description": "Serverless Framework plugin for AWS Bedrock AgentCore - deploy Runtime, Memory, and Gateway resources",
   "main": "src/index.js",
   "engines": {
@@ -25,6 +25,9 @@
   },
   "bugs": {
     "url": "https://github.com/LawProAI/serverless-bedrock-agentcore-plugin/issues"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-agentcore-control": "^3.994.0"
   },
   "peerDependencies": {
     "serverless": ">=3.0.0 || >=4.0.0"
