@@ -1003,9 +1003,7 @@ describe('ServerlessBedrockAgentCore', () => {
           return Promise.resolve({
             Stacks: [
               {
-                Outputs: [
-                  { OutputKey: 'MyagentRuntimeArn', OutputValue: expectedArn },
-                ],
+                Outputs: [{ OutputKey: 'MyagentRuntimeArn', OutputValue: expectedArn }],
               },
             ],
           });
@@ -1099,9 +1097,7 @@ describe('ServerlessBedrockAgentCore', () => {
           return Promise.resolve({
             Stacks: [
               {
-                Outputs: [
-                  { OutputKey: 'MyagentRuntimeArn', OutputValue: expectedArn },
-                ],
+                Outputs: [{ OutputKey: 'MyagentRuntimeArn', OutputValue: expectedArn }],
               },
             ],
           });
