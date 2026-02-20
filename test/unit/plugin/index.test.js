@@ -954,10 +954,162 @@ describe('ServerlessBedrockAgentCore', () => {
 
       const { PutResourcePolicyCommand } = require('@aws-sdk/client-bedrock-agentcore-control');
       expect(mockSend).toHaveBeenCalledTimes(1);
+
+      const expectedArn = 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123';
       expect(PutResourcePolicyCommand).toHaveBeenCalledWith({
-        resourceArn: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
+        resourceArn: expectedArn,
         policy: expect.stringContaining('"Version":"2012-10-17"'),
       });
+
+      // Verify wildcard Resource was replaced with the actual runtime ARN
+      const sentPolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[0][0].policy);
+      expect(sentPolicy.Statement[0].Resource).toBe(expectedArn);
+    });
+
+    test('replaces wildcard Resource in all statements with runtime ARN', async () => {
+      const { PutResourcePolicyCommand } = require('@aws-sdk/client-bedrock-agentcore-control');
+      PutResourcePolicyCommand.mockClear();
+
+      mockServerless.service.agents = {
+        myAgent: {
+          type: 'runtime',
+          artifact: { containerImage: 'test:latest' },
+          resourcePolicy: {
+            Statement: [
+              {
+                Sid: 'AllowAccount1',
+                Effect: 'Allow',
+                Principal: { AWS: 'arn:aws:iam::111111111111:role/Role1' },
+                Action: 'bedrock-agentcore:InvokeAgentRuntime',
+                Resource: '*',
+              },
+              {
+                Sid: 'AllowAccount2',
+                Effect: 'Allow',
+                Principal: { AWS: 'arn:aws:iam::222222222222:role/Role2' },
+                Action: 'bedrock-agentcore:InvokeAgentRuntime',
+                Resource: '*',
+              },
+            ],
+          },
+        },
+      };
+      plugin = new ServerlessBedrockAgentCore(mockServerless, mockOptions, mockUtils);
+
+      const expectedArn = 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123';
+      const mockProvider = mockServerless.getProvider();
+      mockProvider.request.mockImplementation((service, action) => {
+        if (service === 'CloudFormation' && action === 'describeStacks') {
+          return Promise.resolve({
+            Stacks: [
+              {
+                Outputs: [{ OutputKey: 'MyagentRuntimeArn', OutputValue: expectedArn }],
+              },
+            ],
+          });
+        }
+        return Promise.resolve({});
+      });
+      mockSend.mockResolvedValue({});
+
+      await plugin.applyResourcePolicies();
+
+      const sentPolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[0][0].policy);
+      expect(sentPolicy.Statement).toHaveLength(2);
+      expect(sentPolicy.Statement[0].Resource).toBe(expectedArn);
+      expect(sentPolicy.Statement[1].Resource).toBe(expectedArn);
+    });
+
+    test('preserves explicit Resource ARN without replacing', async () => {
+      const { PutResourcePolicyCommand } = require('@aws-sdk/client-bedrock-agentcore-control');
+      PutResourcePolicyCommand.mockClear();
+      const explicitArn = 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/explicit';
+      mockServerless.service.agents = {
+        myAgent: {
+          type: 'runtime',
+          artifact: { containerImage: 'test:latest' },
+          resourcePolicy: {
+            Statement: [
+              {
+                Effect: 'Allow',
+                Principal: { AWS: 'arn:aws:iam::123456789012:role/MyRole' },
+                Action: 'bedrock-agentcore:InvokeAgentRuntime',
+                Resource: explicitArn,
+              },
+            ],
+          },
+        },
+      };
+      plugin = new ServerlessBedrockAgentCore(mockServerless, mockOptions, mockUtils);
+
+      const mockProvider = mockServerless.getProvider();
+      mockProvider.request.mockImplementation((service, action) => {
+        if (service === 'CloudFormation' && action === 'describeStacks') {
+          return Promise.resolve({
+            Stacks: [
+              {
+                Outputs: [
+                  {
+                    OutputKey: 'MyagentRuntimeArn',
+                    OutputValue: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123',
+                  },
+                ],
+              },
+            ],
+          });
+        }
+        return Promise.resolve({});
+      });
+      mockSend.mockResolvedValue({});
+
+      await plugin.applyResourcePolicies();
+
+      const sentPolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[0][0].policy);
+      expect(sentPolicy.Statement[0].Resource).toBe(explicitArn);
+    });
+
+    test('replaces array wildcard Resource ["*"] with runtime ARN', async () => {
+      const { PutResourcePolicyCommand } = require('@aws-sdk/client-bedrock-agentcore-control');
+      PutResourcePolicyCommand.mockClear();
+
+      mockServerless.service.agents = {
+        myAgent: {
+          type: 'runtime',
+          artifact: { containerImage: 'test:latest' },
+          resourcePolicy: {
+            Statement: [
+              {
+                Effect: 'Allow',
+                Principal: { AWS: 'arn:aws:iam::123456789012:role/MyRole' },
+                Action: ['bedrock-agentcore:InvokeAgentRuntime'],
+                Resource: ['*'],
+              },
+            ],
+          },
+        },
+      };
+      plugin = new ServerlessBedrockAgentCore(mockServerless, mockOptions, mockUtils);
+
+      const expectedArn = 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123';
+      const mockProvider = mockServerless.getProvider();
+      mockProvider.request.mockImplementation((service, action) => {
+        if (service === 'CloudFormation' && action === 'describeStacks') {
+          return Promise.resolve({
+            Stacks: [
+              {
+                Outputs: [{ OutputKey: 'MyagentRuntimeArn', OutputValue: expectedArn }],
+              },
+            ],
+          });
+        }
+        return Promise.resolve({});
+      });
+      mockSend.mockResolvedValue({});
+
+      await plugin.applyResourcePolicies();
+
+      const sentPolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[0][0].policy);
+      expect(sentPolicy.Statement[0].Resource).toBe(expectedArn);
     });
 
     test('throws error when API call fails', async () => {

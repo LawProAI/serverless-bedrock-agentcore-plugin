@@ -41,7 +41,7 @@ agents:
 
 #### 1. Resource-Based Policy (Agent Account)
 
-Configured in `serverless.yml` using the `resourcePolicy` property. This policy is attached to the AgentCore runtime resource and specifies which principals can invoke it.
+Configured in `serverless.yml` using the `resourcePolicy` property. This policy is applied to the AgentCore runtime resource after deployment via the `PutResourcePolicy` API (not via CloudFormation). Any `Resource: '*'` in your statements is automatically replaced with the actual runtime ARN at deploy time.
 
 #### 2. IAM Permissions (Caller Account)
 
@@ -69,13 +69,11 @@ The IAM role in the caller account needs permissions to invoke the agent:
 npx sls deploy --stage dev
 ```
 
-3. Verify the resource policy was applied:
+3. Verify the resource policy was applied (note: resource policies are applied via the `PutResourcePolicy` API, not CloudFormation):
 
 ```bash
-aws cloudformation get-template \
-  --stack-name cross-account-agent-dev \
-  --query 'TemplateBody' \
-  --output json | jq '.Resources.MyagentRuntime.Properties.ResourcePolicy'
+aws bedrock-agentcore-control get-resource-policy \
+  --resource-arn <runtime-arn-from-stack-outputs>
 ```
 
 ## Testing Cross-Account Access
@@ -147,8 +145,8 @@ If you get an `AccessDeniedException` when invoking the agent:
 
 If the resource policy doesn't seem to be applied:
 
-1. Check CloudFormation template: `aws cloudformation get-template --stack-name <stack-name>`
-2. Verify the plugin version supports resource policies (v0.2.0+)
+1. Check the deploy logs for "Applying resource policy" and "Resource policy applied successfully" messages
+2. Verify the plugin version supports resource policies (v0.3.0+)
 3. Ensure the `resourcePolicy` is properly indented in `serverless.yml`
 4. Redeploy the stack to apply changes
 

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enable cross-account access to agent runtimes
   - Standard IAM policy document format
   - Support for multiple principals and statements
+  - Automatic `Resource: '*'` replacement with actual runtime ARN at deploy time
 - New example: `cross-account-access` demonstrating resource policy usage
 - Schema validation for `resourcePolicy` configuration
 - Test coverage for resource policy builder functions

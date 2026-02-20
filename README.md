@@ -135,7 +135,7 @@ Example use cases:
 - **Service-to-service**: Grant specific IAM roles permission to invoke the runtime
 - **Multi-tenant architectures**: Control access across different AWS accounts
 
-The `resourcePolicy` follows standard IAM policy document format with `Version` (defaults to `2012-10-17`) and `Statement` array.
+The `resourcePolicy` follows standard IAM policy document format with `Version` (defaults to `2012-10-17`) and `Statement` array. Use `Resource: '*'` in your statements — the plugin automatically replaces it with the actual runtime ARN at deploy time (required by the `PutResourcePolicy` API). You can also specify an explicit ARN if preferred.
 
 ### Memory
 

@@ -1013,6 +1013,22 @@ class ServerlessBedrockAgentCore {
           continue;
         }
 
+        // Replace wildcard Resource with the actual runtime ARN.
+        // PutResourcePolicy requires each statement's Resource to exactly match
+        // the resourceArn parameter — wildcards are not accepted.
+        // Resource may be a string ('*') or array (['*']) depending on YAML parsing.
+        for (const statement of policyDocument.Statement) {
+          if (statement.Resource === '*') {
+            statement.Resource = runtimeArn;
+          } else if (
+            Array.isArray(statement.Resource) &&
+            statement.Resource.length === 1 &&
+            statement.Resource[0] === '*'
+          ) {
+            statement.Resource = runtimeArn;
+          }
+        }
+
         const client = new BedrockAgentCoreControlClient({
           region: this.provider.getRegion(),
         });
