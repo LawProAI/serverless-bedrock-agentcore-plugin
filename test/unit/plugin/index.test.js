@@ -961,12 +961,12 @@ describe('ServerlessBedrockAgentCore', () => {
         policy: expect.stringContaining('"Version":"2012-10-17"'),
       });
 
-      // Verify wildcard Resource was replaced with the actual runtime ARN
+      // Verify wildcard Resource was replaced with the runtime ARN and sub-resources
       const sentPolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[0][0].policy);
-      expect(sentPolicy.Statement[0].Resource).toBe(expectedArn);
+      expect(sentPolicy.Statement[0].Resource).toEqual([expectedArn, `${expectedArn}/*`]);
     });
 
-    test('replaces wildcard Resource in all statements with runtime ARN', async () => {
+    test('replaces wildcard Resource in all statements with runtime ARN and sub-resources', async () => {
       const { PutResourcePolicyCommand } = require('@aws-sdk/client-bedrock-agentcore-control');
       PutResourcePolicyCommand.mockClear();
 
@@ -1016,8 +1016,8 @@ describe('ServerlessBedrockAgentCore', () => {
 
       const sentPolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[0][0].policy);
       expect(sentPolicy.Statement).toHaveLength(2);
-      expect(sentPolicy.Statement[0].Resource).toBe(expectedArn);
-      expect(sentPolicy.Statement[1].Resource).toBe(expectedArn);
+      expect(sentPolicy.Statement[0].Resource).toEqual([expectedArn, `${expectedArn}/*`]);
+      expect(sentPolicy.Statement[1].Resource).toEqual([expectedArn, `${expectedArn}/*`]);
     });
 
     test('preserves explicit Resource ARN without replacing', async () => {
@@ -1068,7 +1068,7 @@ describe('ServerlessBedrockAgentCore', () => {
       expect(sentPolicy.Statement[0].Resource).toBe(explicitArn);
     });
 
-    test('replaces array wildcard Resource ["*"] with runtime ARN', async () => {
+    test('replaces array wildcard Resource ["*"] with runtime ARN and sub-resources', async () => {
       const { PutResourcePolicyCommand } = require('@aws-sdk/client-bedrock-agentcore-control');
       PutResourcePolicyCommand.mockClear();
 
@@ -1109,7 +1109,7 @@ describe('ServerlessBedrockAgentCore', () => {
       await plugin.applyResourcePolicies();
 
       const sentPolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[0][0].policy);
-      expect(sentPolicy.Statement[0].Resource).toBe(expectedArn);
+      expect(sentPolicy.Statement[0].Resource).toEqual([expectedArn, `${expectedArn}/*`]);
     });
 
     test('throws error when API call fails', async () => {

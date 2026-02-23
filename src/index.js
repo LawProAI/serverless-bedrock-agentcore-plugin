@@ -1013,19 +1013,20 @@ class ServerlessBedrockAgentCore {
           continue;
         }
 
-        // Replace wildcard Resource with the actual runtime ARN.
-        // PutResourcePolicy requires each statement's Resource to exactly match
-        // the resourceArn parameter — wildcards are not accepted.
+        // Replace wildcard Resource with the actual runtime ARN and sub-resources.
+        // Some actions (e.g. InvokeAgentRuntime) target sub-resources like
+        // runtime/<id>/runtime-endpoint/DEFAULT, so the policy must cover both
+        // the runtime ARN itself and all sub-resource paths.
         // Resource may be a string ('*') or array (['*']) depending on YAML parsing.
         for (const statement of policyDocument.Statement) {
           if (statement.Resource === '*') {
-            statement.Resource = runtimeArn;
+            statement.Resource = [runtimeArn, `${runtimeArn}/*`];
           } else if (
             Array.isArray(statement.Resource) &&
             statement.Resource.length === 1 &&
             statement.Resource[0] === '*'
           ) {
-            statement.Resource = runtimeArn;
+            statement.Resource = [runtimeArn, `${runtimeArn}/*`];
           }
         }
 
