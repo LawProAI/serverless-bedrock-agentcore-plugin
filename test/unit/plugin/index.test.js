@@ -4,7 +4,10 @@ const mockSend = jest.fn();
 jest.mock('@aws-sdk/client-bedrock-agentcore-control', () => ({
   BedrockAgentCoreControlClient: jest.fn(() => ({ send: mockSend })),
   PutResourcePolicyCommand: jest.fn((params) => ({ ...params, _type: 'PutResourcePolicyCommand' })),
-  ListAgentRuntimeEndpointsCommand: jest.fn((params) => ({ ...params, _type: 'ListAgentRuntimeEndpointsCommand' })),
+  ListAgentRuntimeEndpointsCommand: jest.fn((params) => ({
+    ...params,
+    _type: 'ListAgentRuntimeEndpointsCommand',
+  })),
 }));
 
 const ServerlessBedrockAgentCore = require('../../../src/index');
