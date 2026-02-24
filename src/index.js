@@ -22,6 +22,7 @@ const { DockerBuilder } = require('./docker/builder');
 const {
   BedrockAgentCoreControlClient,
   PutResourcePolicyCommand,
+  ListAgentRuntimeEndpointsCommand,
 } = require('@aws-sdk/client-bedrock-agentcore-control');
 
 /**
@@ -1001,44 +1002,70 @@ class ServerlessBedrockAgentCore {
 
     this.log.info(`Applying resource policies for ${agentsWithPolicies.length} runtime(s)...`);
 
+    const client = new BedrockAgentCoreControlClient({
+      region: this.provider.getRegion(),
+    });
+
     for (const [name, config] of agentsWithPolicies) {
       try {
         this.log.info(`  Applying resource policy for '${name}'...`);
 
         const runtimeArn = await this.getRuntimeArn(name);
-        const policyDocument = buildResourcePolicy(config.resourcePolicy);
+        const basePolicyDocument = buildResourcePolicy(config.resourcePolicy);
 
-        if (!policyDocument) {
+        if (!basePolicyDocument) {
           this.log.warning(`  Skipping '${name}': resource policy has no statements`);
           continue;
         }
 
-        // Replace wildcard Resource with the actual runtime ARN and sub-resources.
-        // Some actions (e.g. InvokeAgentRuntime) target sub-resources like
-        // runtime/<id>/runtime-endpoint/DEFAULT, so the policy must cover both
-        // the runtime ARN itself and all sub-resource paths.
-        // Resource may be a string ('*') or array (['*']) depending on YAML parsing.
-        for (const statement of policyDocument.Statement) {
-          if (statement.Resource === '*') {
-            statement.Resource = [runtimeArn, `${runtimeArn}/*`];
-          } else if (
-            Array.isArray(statement.Resource) &&
-            statement.Resource.length === 1 &&
-            statement.Resource[0] === '*'
-          ) {
-            statement.Resource = [runtimeArn, `${runtimeArn}/*`];
+        // PutResourcePolicy requires each statement's Resource to be a single ARN
+        // that exactly matches the resourceArn parameter. We apply the policy to
+        // both the runtime and each of its endpoints, since actions like
+        // InvokeAgentRuntime target the endpoint sub-resource
+        // (runtime/<id>/runtime-endpoint/DEFAULT).
+        const targetArns = [runtimeArn];
+
+        // Discover endpoint ARNs for this runtime
+        const runtimeId = runtimeArn.split('/').pop();
+        try {
+          const endpointsResponse = await client.send(
+            new ListAgentRuntimeEndpointsCommand({ agentRuntimeId: runtimeId })
+          );
+          for (const ep of endpointsResponse.runtimeEndpoints || []) {
+            if (ep.agentRuntimeEndpointArn) {
+              targetArns.push(ep.agentRuntimeEndpointArn);
+            }
           }
+        } catch (epError) {
+          this.log.warning(
+            `  Could not list endpoints for '${name}', applying policy to runtime only: ${epError.message}`
+          );
         }
 
-        const client = new BedrockAgentCoreControlClient({
-          region: this.provider.getRegion(),
-        });
-        await client.send(
-          new PutResourcePolicyCommand({
-            resourceArn: runtimeArn,
-            policy: JSON.stringify(policyDocument),
-          })
-        );
+        for (const targetArn of targetArns) {
+          // Deep-copy the policy and replace wildcard Resource with the target ARN.
+          // Resource may be a string ('*') or array (['*']) depending on YAML parsing.
+          const policyDocument = JSON.parse(JSON.stringify(basePolicyDocument));
+          for (const statement of policyDocument.Statement) {
+            const resource = statement.Resource;
+            if (
+              resource === '*' ||
+              (Array.isArray(resource) && resource.length === 1 && resource[0] === '*')
+            ) {
+              statement.Resource = targetArn;
+            }
+          }
+
+          await client.send(
+            new PutResourcePolicyCommand({
+              resourceArn: targetArn,
+              policy: JSON.stringify(policyDocument),
+            })
+          );
+
+          const shortArn = targetArn.split(':').pop();
+          this.log.info(`  Resource policy applied to ${shortArn}`);
+        }
 
         this.log.info(`  Resource policy applied successfully for '${name}'`);
       } catch (error) {
