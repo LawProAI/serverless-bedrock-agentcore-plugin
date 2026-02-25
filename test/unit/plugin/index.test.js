@@ -4,6 +4,10 @@ const mockSend = jest.fn();
 jest.mock('@aws-sdk/client-bedrock-agentcore-control', () => ({
   BedrockAgentCoreControlClient: jest.fn(() => ({ send: mockSend })),
   PutResourcePolicyCommand: jest.fn((params) => ({ ...params, _type: 'PutResourcePolicyCommand' })),
+  ListAgentRuntimeEndpointsCommand: jest.fn((params) => ({
+    ...params,
+    _type: 'ListAgentRuntimeEndpointsCommand',
+  })),
 }));
 
 const ServerlessBedrockAgentCore = require('../../../src/index');
@@ -953,7 +957,8 @@ describe('ServerlessBedrockAgentCore', () => {
       await plugin.applyResourcePolicies();
 
       const { PutResourcePolicyCommand } = require('@aws-sdk/client-bedrock-agentcore-control');
-      expect(mockSend).toHaveBeenCalledTimes(1);
+      // ListAgentRuntimeEndpoints + PutResourcePolicy for runtime
+      expect(mockSend).toHaveBeenCalledTimes(2);
 
       const expectedArn = 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123';
       expect(PutResourcePolicyCommand).toHaveBeenCalledWith({
@@ -961,12 +966,12 @@ describe('ServerlessBedrockAgentCore', () => {
         policy: expect.stringContaining('"Version":"2012-10-17"'),
       });
 
-      // Verify wildcard Resource was replaced with the runtime ARN and sub-resources
+      // Verify wildcard Resource was replaced with a single ARN string
       const sentPolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[0][0].policy);
-      expect(sentPolicy.Statement[0].Resource).toEqual([expectedArn, `${expectedArn}/*`]);
+      expect(sentPolicy.Statement[0].Resource).toBe(expectedArn);
     });
 
-    test('replaces wildcard Resource in all statements with runtime ARN and sub-resources', async () => {
+    test('replaces wildcard Resource in all statements with single runtime ARN', async () => {
       const { PutResourcePolicyCommand } = require('@aws-sdk/client-bedrock-agentcore-control');
       PutResourcePolicyCommand.mockClear();
 
@@ -1016,8 +1021,8 @@ describe('ServerlessBedrockAgentCore', () => {
 
       const sentPolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[0][0].policy);
       expect(sentPolicy.Statement).toHaveLength(2);
-      expect(sentPolicy.Statement[0].Resource).toEqual([expectedArn, `${expectedArn}/*`]);
-      expect(sentPolicy.Statement[1].Resource).toEqual([expectedArn, `${expectedArn}/*`]);
+      expect(sentPolicy.Statement[0].Resource).toBe(expectedArn);
+      expect(sentPolicy.Statement[1].Resource).toBe(expectedArn);
     });
 
     test('preserves explicit Resource ARN without replacing', async () => {
@@ -1068,7 +1073,7 @@ describe('ServerlessBedrockAgentCore', () => {
       expect(sentPolicy.Statement[0].Resource).toBe(explicitArn);
     });
 
-    test('replaces array wildcard Resource ["*"] with runtime ARN and sub-resources', async () => {
+    test('replaces array wildcard Resource ["*"] with single runtime ARN', async () => {
       const { PutResourcePolicyCommand } = require('@aws-sdk/client-bedrock-agentcore-control');
       PutResourcePolicyCommand.mockClear();
 
@@ -1109,7 +1114,69 @@ describe('ServerlessBedrockAgentCore', () => {
       await plugin.applyResourcePolicies();
 
       const sentPolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[0][0].policy);
-      expect(sentPolicy.Statement[0].Resource).toEqual([expectedArn, `${expectedArn}/*`]);
+      expect(sentPolicy.Statement[0].Resource).toBe(expectedArn);
+    });
+
+    test('applies resource policy to both runtime and discovered endpoints', async () => {
+      const { PutResourcePolicyCommand } = require('@aws-sdk/client-bedrock-agentcore-control');
+      PutResourcePolicyCommand.mockClear();
+
+      mockServerless.service.agents = {
+        myAgent: {
+          type: 'runtime',
+          artifact: { containerImage: 'test:latest' },
+          resourcePolicy: {
+            Statement: [
+              {
+                Effect: 'Allow',
+                Principal: { AWS: 'arn:aws:iam::123456789012:role/MyRole' },
+                Action: 'bedrock-agentcore:InvokeAgentRuntime',
+                Resource: '*',
+              },
+            ],
+          },
+        },
+      };
+      plugin = new ServerlessBedrockAgentCore(mockServerless, mockOptions, mockUtils);
+
+      const runtimeArn = 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/abc123';
+      const endpointArn = `${runtimeArn}/runtime-endpoint/DEFAULT`;
+      const mockProvider = mockServerless.getProvider();
+      mockProvider.request.mockImplementation((service, action) => {
+        if (service === 'CloudFormation' && action === 'describeStacks') {
+          return Promise.resolve({
+            Stacks: [
+              {
+                Outputs: [{ OutputKey: 'MyagentRuntimeArn', OutputValue: runtimeArn }],
+              },
+            ],
+          });
+        }
+        return Promise.resolve({});
+      });
+
+      // ListAgentRuntimeEndpoints returns one endpoint, then PutResourcePolicy succeeds
+      mockSend
+        .mockResolvedValueOnce({
+          runtimeEndpoints: [{ agentRuntimeEndpointArn: endpointArn }],
+        })
+        .mockResolvedValue({});
+
+      await plugin.applyResourcePolicies();
+
+      // Should call: ListEndpoints, PutResourcePolicy(runtime), PutResourcePolicy(endpoint)
+      expect(mockSend).toHaveBeenCalledTimes(3);
+      expect(PutResourcePolicyCommand).toHaveBeenCalledTimes(2);
+
+      // First call: runtime ARN
+      const runtimePolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[0][0].policy);
+      expect(PutResourcePolicyCommand.mock.calls[0][0].resourceArn).toBe(runtimeArn);
+      expect(runtimePolicy.Statement[0].Resource).toBe(runtimeArn);
+
+      // Second call: endpoint ARN
+      const endpointPolicy = JSON.parse(PutResourcePolicyCommand.mock.calls[1][0].policy);
+      expect(PutResourcePolicyCommand.mock.calls[1][0].resourceArn).toBe(endpointArn);
+      expect(endpointPolicy.Statement[0].Resource).toBe(endpointArn);
     });
 
     test('throws error when API call fails', async () => {
