@@ -62,6 +62,8 @@ function buildTargetConfiguration(target, context) {
       return buildOpenApiTargetConfiguration(target);
     case 'smithy':
       return buildSmithyTargetConfiguration(target);
+    case 'mcpserver':
+      return buildMcpServerTargetConfiguration(target);
     default:
       throw new Error(`Unknown gateway target type: ${targetType}`);
   }
@@ -242,6 +244,43 @@ function buildSmithyTargetConfiguration(target) {
 }
 
 /**
+ * Build MCP server target configuration
+ *
+ * @param {Object} target - The target configuration
+ * @returns {Object} CloudFormation MCP server target configuration
+ */
+function buildMcpServerTargetConfiguration(target) {
+  return {
+    Mcp: {
+      McpServer: {
+        Endpoint: target.endpoint,
+      },
+    },
+  };
+}
+
+/**
+ * Build metadata configuration for header/query-parameter propagation
+ *
+ * @param {Object} config - The target configuration
+ * @returns {Object|null} CloudFormation MetadataConfiguration or null
+ */
+function buildMetadataConfiguration(config) {
+  if (!config.metadataConfiguration) {
+    return null;
+  }
+
+  const { allowedRequestHeaders, allowedResponseHeaders, allowedQueryParameters } =
+    config.metadataConfiguration;
+
+  return {
+    ...(allowedRequestHeaders && { AllowedRequestHeaders: allowedRequestHeaders }),
+    ...(allowedResponseHeaders && { AllowedResponseHeaders: allowedResponseHeaders }),
+    ...(allowedQueryParameters && { AllowedQueryParameters: allowedQueryParameters }),
+  };
+}
+
+/**
  * Compile a GatewayTarget resource to CloudFormation
  *
  * @param {string} gatewayName - The parent gateway name
@@ -260,6 +299,7 @@ function compileGatewayTarget(gatewayName, targetName, config, gatewayLogicalId,
 
   const credentialConfigs = buildCredentialProviderConfigurations(config.credentialProvider);
   const targetConfig = buildTargetConfiguration(config, context);
+  const metadataConfig = buildMetadataConfiguration(config);
 
   return {
     Type: 'AWS::BedrockAgentCore::GatewayTarget',
@@ -270,6 +310,8 @@ function compileGatewayTarget(gatewayName, targetName, config, gatewayLogicalId,
       CredentialProviderConfigurations: credentialConfigs,
       TargetConfiguration: targetConfig,
       ...(config.description && { Description: config.description }),
+      ...(metadataConfig &&
+        Object.keys(metadataConfig).length > 0 && { MetadataConfiguration: metadataConfig }),
     },
   };
 }
@@ -281,5 +323,7 @@ module.exports = {
   buildLambdaTargetConfiguration,
   buildOpenApiTargetConfiguration,
   buildSmithyTargetConfiguration,
+  buildMcpServerTargetConfiguration,
+  buildMetadataConfiguration,
   transformSchemaToCloudFormation,
 };

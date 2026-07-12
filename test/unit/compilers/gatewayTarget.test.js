@@ -7,6 +7,8 @@ const {
   buildLambdaTargetConfiguration,
   buildOpenApiTargetConfiguration,
   buildSmithyTargetConfiguration,
+  buildMcpServerTargetConfiguration,
+  buildMetadataConfiguration,
 } = require('../../../src/compilers/gatewayTarget');
 
 describe('GatewayTarget Compiler', () => {
@@ -218,6 +220,67 @@ describe('GatewayTarget Compiler', () => {
     });
   });
 
+  describe('buildMcpServerTargetConfiguration', () => {
+    test('builds with endpoint', () => {
+      const target = {
+        type: 'mcpserver',
+        endpoint: 'https://example.com/mcp/',
+      };
+
+      const result = buildMcpServerTargetConfiguration(target);
+
+      expect(result).toEqual({
+        Mcp: {
+          McpServer: {
+            Endpoint: 'https://example.com/mcp/',
+          },
+        },
+      });
+    });
+  });
+
+  describe('buildMetadataConfiguration', () => {
+    test('maps all three fields to PascalCase when present', () => {
+      const config = {
+        metadataConfiguration: {
+          allowedRequestHeaders: ['X-Api-Key'],
+          allowedResponseHeaders: ['X-Request-Id'],
+          allowedQueryParameters: ['page'],
+        },
+      };
+
+      const result = buildMetadataConfiguration(config);
+
+      expect(result).toEqual({
+        AllowedRequestHeaders: ['X-Api-Key'],
+        AllowedResponseHeaders: ['X-Request-Id'],
+        AllowedQueryParameters: ['page'],
+      });
+    });
+
+    test('returns null when metadataConfiguration is absent', () => {
+      const result = buildMetadataConfiguration({});
+
+      expect(result).toBeNull();
+    });
+
+    test('omits fields that are not provided', () => {
+      const config = {
+        metadataConfiguration: {
+          allowedRequestHeaders: ['X-Api-Key'],
+        },
+      };
+
+      const result = buildMetadataConfiguration(config);
+
+      expect(result).toEqual({
+        AllowedRequestHeaders: ['X-Api-Key'],
+      });
+      expect(result).not.toHaveProperty('AllowedResponseHeaders');
+      expect(result).not.toHaveProperty('AllowedQueryParameters');
+    });
+  });
+
   describe('compileGatewayTarget', () => {
     test('generates valid CloudFormation for Lambda target', () => {
       const config = {
@@ -267,6 +330,30 @@ describe('GatewayTarget Compiler', () => {
 
       expect(result.Properties.TargetConfiguration).toHaveProperty('Mcp');
       expect(result.Properties.TargetConfiguration.Mcp).toHaveProperty('OpenApiSchema');
+    });
+
+    test('generates valid CloudFormation for MCP server target with metadata configuration', () => {
+      const config = {
+        name: 'mcp-server',
+        type: 'mcpserver',
+        endpoint: 'https://example.com/mcp/',
+        metadataConfiguration: {
+          allowedRequestHeaders: ['X-Api-Key'],
+        },
+      };
+
+      const result = compileGatewayTarget(
+        'toolGateway',
+        'mcp-server',
+        config,
+        'ToolgatewayGateway',
+        baseContext
+      );
+
+      expect(result.Properties.TargetConfiguration.Mcp.McpServer.Endpoint).toBe(
+        'https://example.com/mcp/'
+      );
+      expect(result.Properties.MetadataConfiguration.AllowedRequestHeaders).toEqual(['X-Api-Key']);
     });
   });
 });
