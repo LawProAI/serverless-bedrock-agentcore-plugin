@@ -229,7 +229,9 @@ function defineAgentsSchema(serverless) {
               description: { type: 'string' },
               functionArn: { type: 'string' },
               functionName: { type: 'string' },
-              endpoint: { type: 'string' },
+              endpoint: {
+                oneOf: [{ type: 'string' }, { type: 'object' }],
+              },
               s3: {
                 type: 'object',
                 properties: {
