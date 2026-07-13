@@ -371,7 +371,7 @@ Gateway and the upstream MCP server:
 ```yaml
 targets:
   - name: internal-mcp-server
-    type: mcpServer
+    type: mcpserver
     endpoint: https://internal-tools.example.com/mcp/
     metadataConfiguration:
       allowedRequestHeaders:
