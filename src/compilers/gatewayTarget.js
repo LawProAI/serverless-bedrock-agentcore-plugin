@@ -266,6 +266,7 @@ function buildMcpServerTargetConfiguration(target) {
   if (!target.endpoint) {
     throw new Error('mcpserver target requires an endpoint (must begin with https://)');
   }
+
   return {
     Mcp: {
       McpServer: {
@@ -294,6 +295,7 @@ function buildMetadataConfiguration(config) {
     ...(allowedResponseHeaders && { AllowedResponseHeaders: allowedResponseHeaders }),
     ...(allowedQueryParameters && { AllowedQueryParameters: allowedQueryParameters }),
   };
+
   return Object.keys(result).length > 0 ? result : null;
 }
 
