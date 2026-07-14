@@ -21,10 +21,7 @@ function buildCredentialProviderConfigurations(credProvider) {
   };
 
   // Add IAM configuration (required for non-Lambda targets such as mcpserver)
-  if (
-    (credProvider.type === 'GATEWAY_IAM_ROLE' || !credProvider.type) &&
-    credProvider.iamConfig
-  ) {
+  if ((credProvider.type === 'GATEWAY_IAM_ROLE' || !credProvider.type) && credProvider.iamConfig) {
     config.CredentialProvider = {
       IamCredentialProvider: {
         Service: credProvider.iamConfig.service,
