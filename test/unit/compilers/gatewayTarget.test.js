@@ -28,6 +28,38 @@ describe('GatewayTarget Compiler', () => {
       expect(result).toEqual([{ CredentialProviderType: 'GATEWAY_IAM_ROLE' }]);
     });
 
+    test('builds GATEWAY_IAM_ROLE with iamConfig', () => {
+      const credProvider = {
+        type: 'GATEWAY_IAM_ROLE',
+        iamConfig: { service: 'execute-api', region: 'us-west-2' },
+      };
+
+      const result = buildCredentialProviderConfigurations(credProvider);
+
+      expect(result).toEqual([
+        {
+          CredentialProviderType: 'GATEWAY_IAM_ROLE',
+          CredentialProvider: {
+            IamCredentialProvider: { Service: 'execute-api', Region: 'us-west-2' },
+          },
+        },
+      ]);
+    });
+
+    test('builds GATEWAY_IAM_ROLE with iamConfig omitting optional region', () => {
+      const credProvider = {
+        type: 'GATEWAY_IAM_ROLE',
+        iamConfig: { service: 'execute-api' },
+      };
+
+      const result = buildCredentialProviderConfigurations(credProvider);
+
+      expect(result[0].CredentialProvider.IamCredentialProvider).toEqual({
+        Service: 'execute-api',
+      });
+      expect(result[0].CredentialProvider.IamCredentialProvider).not.toHaveProperty('Region');
+    });
+
     test('builds OAuth configuration', () => {
       const credProvider = {
         type: 'OAUTH',
@@ -237,6 +269,12 @@ describe('GatewayTarget Compiler', () => {
         },
       });
     });
+
+    test('throws when endpoint is absent', () => {
+      expect(() => buildMcpServerTargetConfiguration({ type: 'mcpserver' })).toThrow(
+        'mcpserver target requires an endpoint'
+      );
+    });
   });
 
   describe('buildMetadataConfiguration', () => {
@@ -278,6 +316,12 @@ describe('GatewayTarget Compiler', () => {
       });
       expect(result).not.toHaveProperty('AllowedResponseHeaders');
       expect(result).not.toHaveProperty('AllowedQueryParameters');
+    });
+
+    test('returns null for empty metadataConfiguration object', () => {
+      const result = buildMetadataConfiguration({ metadataConfiguration: {} });
+
+      expect(result).toBeNull();
     });
   });
 
@@ -354,6 +398,25 @@ describe('GatewayTarget Compiler', () => {
         'https://example.com/mcp/'
       );
       expect(result.Properties.MetadataConfiguration.AllowedRequestHeaders).toEqual(['X-Api-Key']);
+    });
+
+    test('omits MetadataConfiguration when metadataConfiguration is empty', () => {
+      const config = {
+        name: 'mcp-server',
+        type: 'mcpserver',
+        endpoint: 'https://example.com/mcp/',
+        metadataConfiguration: {},
+      };
+
+      const result = compileGatewayTarget(
+        'toolGateway',
+        'mcp-server',
+        config,
+        'ToolgatewayGateway',
+        baseContext
+      );
+
+      expect(result.Properties).not.toHaveProperty('MetadataConfiguration');
     });
   });
 });

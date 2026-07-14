@@ -27,6 +27,11 @@ agents:
         type: mcpserver
         description: Existing MCP server for internal tooling
         endpoint: https://internal-tools.example.com/mcp/
+        credentialProvider:
+          type: GATEWAY_IAM_ROLE
+          iamConfig:
+            service: execute-api
+            region: ${self:provider.region}
         metadataConfiguration:
           allowedRequestHeaders:
             - X-Internal-Auth

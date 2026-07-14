@@ -8,7 +8,7 @@
  */
 function buildCredentialProviderConfigurations(credProvider) {
   if (!credProvider) {
-    // Default to GATEWAY_IAM_ROLE
+    // Default to GATEWAY_IAM_ROLE (bare form, valid for Lambda targets)
     return [
       {
         CredentialProviderType: 'GATEWAY_IAM_ROLE',
@@ -19,6 +19,19 @@ function buildCredentialProviderConfigurations(credProvider) {
   const config = {
     CredentialProviderType: credProvider.type || 'GATEWAY_IAM_ROLE',
   };
+
+  // Add IAM configuration (required for non-Lambda targets such as mcpserver)
+  if (
+    (credProvider.type === 'GATEWAY_IAM_ROLE' || !credProvider.type) &&
+    credProvider.iamConfig
+  ) {
+    config.CredentialProvider = {
+      IamCredentialProvider: {
+        Service: credProvider.iamConfig.service,
+        ...(credProvider.iamConfig.region && { Region: credProvider.iamConfig.region }),
+      },
+    };
+  }
 
   // Add OAuth configuration
   if (credProvider.type === 'OAUTH' && credProvider.oauthConfig) {
@@ -250,6 +263,9 @@ function buildSmithyTargetConfiguration(target) {
  * @returns {Object} CloudFormation MCP server target configuration
  */
 function buildMcpServerTargetConfiguration(target) {
+  if (!target.endpoint) {
+    throw new Error('mcpserver target requires an endpoint (must begin with https://)');
+  }
   return {
     Mcp: {
       McpServer: {
@@ -273,11 +289,12 @@ function buildMetadataConfiguration(config) {
   const { allowedRequestHeaders, allowedResponseHeaders, allowedQueryParameters } =
     config.metadataConfiguration;
 
-  return {
+  const result = {
     ...(allowedRequestHeaders && { AllowedRequestHeaders: allowedRequestHeaders }),
     ...(allowedResponseHeaders && { AllowedResponseHeaders: allowedResponseHeaders }),
     ...(allowedQueryParameters && { AllowedQueryParameters: allowedQueryParameters }),
   };
+  return Object.keys(result).length > 0 ? result : null;
 }
 
 /**
@@ -310,8 +327,7 @@ function compileGatewayTarget(gatewayName, targetName, config, gatewayLogicalId,
       CredentialProviderConfigurations: credentialConfigs,
       TargetConfiguration: targetConfig,
       ...(config.description && { Description: config.description }),
-      ...(metadataConfig &&
-        Object.keys(metadataConfig).length > 0 && { MetadataConfiguration: metadataConfig }),
+      ...(metadataConfig && { MetadataConfiguration: metadataConfig }),
     },
   };
 }

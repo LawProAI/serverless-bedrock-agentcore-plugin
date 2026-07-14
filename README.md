@@ -347,7 +347,7 @@ agents:
 | `authorizerConfiguration.customJwtAuthorizer.allowedAudience` | No       | Array of allowed audience values                                   |
 | `authorizerConfiguration.customJwtAuthorizer.allowedClients`  | No       | Array of allowed client IDs                                        |
 | `protocolType`                                                | No       | `MCP` (default: `MCP`)                                             |
-| `targets`                                                     | No       | Gateway targets (`lambda`, `openapi`, `smithy`, or `mcpServer`)    |
+| `targets`                                                     | No       | Gateway targets (`lambda`, `openapi`, `smithy`, or `mcpserver`)    |
 | `description`                                                 | No       | Gateway description                                                |
 | `roleArn`                                                     | No       | Custom IAM role ARN                                                |
 
@@ -362,9 +362,9 @@ agents:
 | `lambda`    | Wraps a Lambda function as a tool                                                       |
 | `openapi`   | Wraps an OpenAPI spec (inline or from S3) as a set of tools                             |
 | `smithy`    | Wraps a Smithy model (inline or from S3) as a set of tools                              |
-| `mcpServer` | Fronts an existing MCP server via its `endpoint`, with optional header/query forwarding |
+| `mcpserver` | Fronts an existing MCP server via its `endpoint`, with optional header/query forwarding |
 
-For `mcpServer` targets, `metadataConfiguration` controls which request
+For `mcpserver` targets, `metadataConfiguration` controls which request
 headers, response headers, and query parameters are forwarded between the
 Gateway and the upstream MCP server:
 

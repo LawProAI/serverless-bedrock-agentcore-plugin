@@ -263,6 +263,14 @@ function defineAgentsSchema(serverless) {
                     type: 'string',
                     enum: ['GATEWAY_IAM_ROLE', 'OAUTH', 'API_KEY'],
                   },
+                  iamConfig: {
+                    type: 'object',
+                    properties: {
+                      service: { type: 'string' },
+                      region: { type: 'string' },
+                    },
+                    required: ['service'],
+                  },
                   oauthConfig: {
                     type: 'object',
                     properties: {

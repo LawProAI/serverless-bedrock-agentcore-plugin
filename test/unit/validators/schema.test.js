@@ -191,6 +191,7 @@ describe('Schema Validator', () => {
       expect(targetsSchema.items.properties.type.enum).toContain('openapi');
       expect(targetsSchema.items.properties.type.enum).toContain('lambda');
       expect(targetsSchema.items.properties.type.enum).toContain('smithy');
+      expect(targetsSchema.items.properties.type.enum).toContain('mcpserver');
     });
 
     test('gateway target endpoint accepts string or object (CFN intrinsic)', () => {
