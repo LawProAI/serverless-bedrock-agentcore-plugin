@@ -1,0 +1,37 @@
+service: mcp-server-target
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+
+plugins:
+  - ../../ # Local plugin reference (use 'serverless-bedrock-agentcore' when installed from npm)
+
+custom:
+  agentCore:
+    defaultTags:
+      Project: ${self:service}
+      ManagedBy: Serverless
+
+agents:
+  # AgentCore Gateway - fronts an existing MCP-speaking HTTP service
+  toolGateway:
+    type: gateway
+    description: Gateway fronting an existing MCP server
+    authorizerType: AWS_IAM
+    targets:
+      - name: internal-mcp-server
+        type: mcpserver
+        description: Existing MCP server for internal tooling
+        endpoint: https://internal-tools.example.com/mcp/
+        credentialProvider:
+          type: GATEWAY_IAM_ROLE
+          iamConfig:
+            service: execute-api
+            region: ${self:provider.region}
+        metadataConfiguration:
+          allowedRequestHeaders:
+            - X-Internal-Auth

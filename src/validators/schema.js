@@ -224,16 +224,36 @@ function defineAgentsSchema(serverless) {
               name: { type: 'string' },
               type: {
                 type: 'string',
-                enum: ['openapi', 'lambda', 'smithy'],
+                enum: ['openapi', 'lambda', 'smithy', 'mcpserver'],
               },
               description: { type: 'string' },
               functionArn: { type: 'string' },
               functionName: { type: 'string' },
+              endpoint: {
+                oneOf: [{ type: 'string' }, { type: 'object' }],
+              },
               s3: {
                 type: 'object',
                 properties: {
                   bucket: { type: 'string' },
                   key: { type: 'string' },
+                },
+              },
+              metadataConfiguration: {
+                type: 'object',
+                properties: {
+                  allowedRequestHeaders: {
+                    type: 'array',
+                    items: { type: 'string' },
+                  },
+                  allowedResponseHeaders: {
+                    type: 'array',
+                    items: { type: 'string' },
+                  },
+                  allowedQueryParameters: {
+                    type: 'array',
+                    items: { type: 'string' },
+                  },
                 },
               },
               credentialProvider: {
@@ -242,6 +262,14 @@ function defineAgentsSchema(serverless) {
                   type: {
                     type: 'string',
                     enum: ['GATEWAY_IAM_ROLE', 'OAUTH', 'API_KEY'],
+                  },
+                  iamConfig: {
+                    type: 'object',
+                    properties: {
+                      service: { type: 'string' },
+                      region: { type: 'string' },
+                    },
+                    required: ['service'],
                   },
                   oauthConfig: {
                     type: 'object',

@@ -323,6 +323,19 @@ agents:
           Fn::GetAtt:
             - SecureFunction
             - Arn
+
+  # Gateway fronting an existing MCP server, with header forwarding
+  mcpGateway:
+    type: gateway
+    description: Gateway fronting an existing MCP server
+    authorizerType: AWS_IAM
+    targets:
+      - name: internal-mcp-server
+        type: mcpserver
+        endpoint: https://internal-tools.example.com/mcp/
+        metadataConfiguration:
+          allowedRequestHeaders:
+            - X-Internal-Auth
 ```
 
 | Property                                                      | Required | Description                                                        |
@@ -334,13 +347,40 @@ agents:
 | `authorizerConfiguration.customJwtAuthorizer.allowedAudience` | No       | Array of allowed audience values                                   |
 | `authorizerConfiguration.customJwtAuthorizer.allowedClients`  | No       | Array of allowed client IDs                                        |
 | `protocolType`                                                | No       | `MCP` (default: `MCP`)                                             |
-| `targets`                                                     | No       | Gateway targets (Lambda functions)                                 |
+| `targets`                                                     | No       | Gateway targets (`lambda`, `openapi`, `smithy`, or `mcpserver`)    |
 | `description`                                                 | No       | Gateway description                                                |
 | `roleArn`                                                     | No       | Custom IAM role ARN                                                |
 
 \*Required when `authorizerType` is `CUSTOM_JWT`
 
 \*\*Required when using `customJwtAuthorizer`
+
+#### Gateway Target Types
+
+| Type        | Description                                                                             |
+| ----------- | --------------------------------------------------------------------------------------- |
+| `lambda`    | Wraps a Lambda function as a tool                                                       |
+| `openapi`   | Wraps an OpenAPI spec (inline or from S3) as a set of tools                             |
+| `smithy`    | Wraps a Smithy model (inline or from S3) as a set of tools                              |
+| `mcpserver` | Fronts an existing MCP server via its `endpoint`, with optional header/query forwarding |
+
+For `mcpserver` targets, `metadataConfiguration` controls which request
+headers, response headers, and query parameters are forwarded between the
+Gateway and the upstream MCP server:
+
+```yaml
+targets:
+  - name: internal-mcp-server
+    type: mcpserver
+    endpoint: https://internal-tools.example.com/mcp/
+    metadataConfiguration:
+      allowedRequestHeaders:
+        - X-Internal-Auth
+      allowedResponseHeaders:
+        - X-Request-Id
+      allowedQueryParameters:
+        - page
+```
 
 ## Commands
 
@@ -459,6 +499,14 @@ Agent protected by Cognito JWT authentication:
 - Cognito User Pool and Client setup
 - JWT token validation at AgentCore level
 - Secure endpoints requiring authentication
+
+### MCP Server Target (`examples/mcp-server-target/`)
+
+Gateway fronting an existing MCP server:
+
+- `mcpServer` Gateway target type pointing at an external MCP endpoint
+- `metadataConfiguration` for forwarding request headers to the upstream
+  MCP server
 
 ## Configuration Options
 

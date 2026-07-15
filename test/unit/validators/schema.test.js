@@ -191,6 +191,15 @@ describe('Schema Validator', () => {
       expect(targetsSchema.items.properties.type.enum).toContain('openapi');
       expect(targetsSchema.items.properties.type.enum).toContain('lambda');
       expect(targetsSchema.items.properties.type.enum).toContain('smithy');
+      expect(targetsSchema.items.properties.type.enum).toContain('mcpserver');
+    });
+
+    test('gateway target endpoint accepts string or object (CFN intrinsic)', () => {
+      defineAgentsSchema(mockServerless);
+
+      const endpointSchema =
+        capturedAgentsSchema.additionalProperties.properties.targets.items.properties.endpoint;
+      expect(endpointSchema.oneOf).toEqual([{ type: 'string' }, { type: 'object' }]);
     });
 
     test('custom agentCore schema includes defaultTags', () => {

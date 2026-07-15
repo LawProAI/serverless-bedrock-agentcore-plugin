@@ -8,7 +8,7 @@
  */
 function buildCredentialProviderConfigurations(credProvider) {
   if (!credProvider) {
-    // Default to GATEWAY_IAM_ROLE
+    // Default to GATEWAY_IAM_ROLE (bare form, valid for Lambda targets)
     return [
       {
         CredentialProviderType: 'GATEWAY_IAM_ROLE',
@@ -19,6 +19,16 @@ function buildCredentialProviderConfigurations(credProvider) {
   const config = {
     CredentialProviderType: credProvider.type || 'GATEWAY_IAM_ROLE',
   };
+
+  // Add IAM configuration (required for non-Lambda targets such as mcpserver)
+  if ((credProvider.type === 'GATEWAY_IAM_ROLE' || !credProvider.type) && credProvider.iamConfig) {
+    config.CredentialProvider = {
+      IamCredentialProvider: {
+        Service: credProvider.iamConfig.service,
+        ...(credProvider.iamConfig.region && { Region: credProvider.iamConfig.region }),
+      },
+    };
+  }
 
   // Add OAuth configuration
   if (credProvider.type === 'OAUTH' && credProvider.oauthConfig) {
@@ -62,6 +72,8 @@ function buildTargetConfiguration(target, context) {
       return buildOpenApiTargetConfiguration(target);
     case 'smithy':
       return buildSmithyTargetConfiguration(target);
+    case 'mcpserver':
+      return buildMcpServerTargetConfiguration(target);
     default:
       throw new Error(`Unknown gateway target type: ${targetType}`);
   }
@@ -242,6 +254,49 @@ function buildSmithyTargetConfiguration(target) {
 }
 
 /**
+ * Build MCP server target configuration
+ *
+ * @param {Object} target - The target configuration
+ * @returns {Object} CloudFormation MCP server target configuration
+ */
+function buildMcpServerTargetConfiguration(target) {
+  if (!target.endpoint) {
+    throw new Error('mcpserver target requires an endpoint (must begin with https://)');
+  }
+
+  return {
+    Mcp: {
+      McpServer: {
+        Endpoint: target.endpoint,
+      },
+    },
+  };
+}
+
+/**
+ * Build metadata configuration for header/query-parameter propagation
+ *
+ * @param {Object} config - The target configuration
+ * @returns {Object|null} CloudFormation MetadataConfiguration or null
+ */
+function buildMetadataConfiguration(config) {
+  if (!config.metadataConfiguration) {
+    return null;
+  }
+
+  const { allowedRequestHeaders, allowedResponseHeaders, allowedQueryParameters } =
+    config.metadataConfiguration;
+
+  const result = {
+    ...(allowedRequestHeaders && { AllowedRequestHeaders: allowedRequestHeaders }),
+    ...(allowedResponseHeaders && { AllowedResponseHeaders: allowedResponseHeaders }),
+    ...(allowedQueryParameters && { AllowedQueryParameters: allowedQueryParameters }),
+  };
+
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+/**
  * Compile a GatewayTarget resource to CloudFormation
  *
  * @param {string} gatewayName - The parent gateway name
@@ -260,6 +315,7 @@ function compileGatewayTarget(gatewayName, targetName, config, gatewayLogicalId,
 
   const credentialConfigs = buildCredentialProviderConfigurations(config.credentialProvider);
   const targetConfig = buildTargetConfiguration(config, context);
+  const metadataConfig = buildMetadataConfiguration(config);
 
   return {
     Type: 'AWS::BedrockAgentCore::GatewayTarget',
@@ -270,6 +326,7 @@ function compileGatewayTarget(gatewayName, targetName, config, gatewayLogicalId,
       CredentialProviderConfigurations: credentialConfigs,
       TargetConfiguration: targetConfig,
       ...(config.description && { Description: config.description }),
+      ...(metadataConfig && { MetadataConfiguration: metadataConfig }),
     },
   };
 }
@@ -281,5 +338,7 @@ module.exports = {
   buildLambdaTargetConfiguration,
   buildOpenApiTargetConfiguration,
   buildSmithyTargetConfiguration,
+  buildMcpServerTargetConfiguration,
+  buildMetadataConfiguration,
   transformSchemaToCloudFormation,
 };
